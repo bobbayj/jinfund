@@ -4,9 +4,7 @@ Downloads Blackrock ETF holdings data from the Blackrock site
 from datetime import datetime
 import requests
 import os
-
-
-data_folder = r'raw'
+import setup
 
 
 # Helper function
@@ -21,26 +19,9 @@ def str2date(asOfDateStr):
     raise ValueError(f'{asOfDateStr} is not a recognised date/time')
 
 
-# Blackrock URLs
-IVV_URL = 'https://www.blackrock.com/au/individual/products/275304/fund/1478358644060.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund'
-IOZ_URL = 'https://www.blackrock.com/au/individual/products/251852/ishares-core-s-and-p-asx-200-etf/1478358644060.ajax?fileType=csv&fileName=IOZ_holdings&dataType=fund'
-IWLD_URL = 'https://www.blackrock.com/au/individual/products/283117/fund/1478358644060.ajax?fileType=csv&fileName=IWLD_holdings&dataType=fund'
-IEMG_URL = 'https://www.blackrock.com/us/individual/products/244050/ishares-core-msci-emerging-markets-etf/1464253357814.ajax?fileType=csv&fileName=IEMG_holdings&dataType=fund'
-
-urls = {
-    'IVV': IVV_URL,
-    'IOZ': IOZ_URL,
-    'IWLD': IWLD_URL,
-    'IEMG': IEMG_URL,
-}
-
-# Blackrock ETFs
-etfs = [
-    'IVV',
-    'IOZ',
-    'IWLD',
-    'IEMG'
-]
+# Get variables from setup module
+[urls, etfs] = setup.commonData().blackrock()
+data_folder = setup.commonData().datafolder
 
 # Loop through all ETFs
 for etf in etfs:

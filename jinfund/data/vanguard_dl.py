@@ -5,26 +5,11 @@ import requests
 import json
 import pandas as pd
 import os
+import setup
 
-data_folder = r'raw'
-
-# Most important is to get the right portfolio ID from Vanguard
-# Can get this by inspecting elements in the webpage
-# (Go to Network tab and reload to see .json requests sent)
-VAS_URL = "https://api.vanguard.com/rs/gre/gra/1.7.0/datasets/auw-retail-holding-details-equity.jsonp?vars=portId:8205,issueType:F"
-VTS_URL = "https://api.vanguard.com/rs/gre/gra/1.7.0/datasets/auw-retail-holding-details-equity.jsonp?vars=portId:0970,issueType:F"
-VEU_URL = "https://api.vanguard.com/rs/gre/gra/1.7.0/datasets/auw-retail-holding-details-equity.jsonp?vars=portId:0991,issueType:F"
-
-urls = {  # Dictionary makes it easy to look up
-    'VAS': VAS_URL,
-    'VTS': VTS_URL,
-    'VEU': VEU_URL
-       }
-etfs = [  # List of etfs from Vanguard
-    'VTS',
-    'VAS',
-    'VEU'
-    ]
+# Get variables from setup module
+[urls, etfs] = setup.commonData().vanguard()
+data_folder = setup.commonData().datafolder
 
 # Download all the portfolio data for given ETFs
 for etf in etfs:
