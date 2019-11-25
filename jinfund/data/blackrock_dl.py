@@ -8,16 +8,18 @@ import os
 
 data_folder = r'raw'
 
+
 # Helper function
 def str2date(asOfDateStr):
     for fmt in ['%d-%b-%Y', '%b %d, %Y']:
         try:
-            return datetime.strptime(asOfDateStr, fmt).date()  # ...in a nice format
+            # ...in a nice format
+            return datetime.strptime(asOfDateStr, fmt).date()
         except ValueError:
             pass
-    
+
     raise ValueError(f'{asOfDateStr} is not a recognised date/time')
-#-----
+
 
 # Blackrock URLs
 IVV_URL = 'https://www.blackrock.com/au/individual/products/275304/fund/1478358644060.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund'
@@ -44,16 +46,20 @@ etfs = [
 for etf in etfs:
     response = requests.get(urls[etf])
     if response:
-        result = response.content.decode('UTF-8-sig')  # Get rid of the random UTF-8 symbols
-        result_splitbyline = result.splitlines()  # Split the long-ass string into a list of rows
-        asOfDate = result_splitbyline[2].split('of,')[1][1:-1]  # Get the holding date in Row 3...
+        # Get rid of the random UTF-8 symbols
+        result = response.content.decode('UTF-8-sig')
+        # Split the long-ass string into a list of rows
+        result_splitbyline = result.splitlines()
+        # Get the holding date in Row 3...
+        asOfDate = result_splitbyline[2].split('of,')[1][1:-1]
         asOfDate = str2date(asOfDate)
-        
+
         filename = f'{etf}_{asOfDate}.csv'
         filepath = os.path.join(data_folder, filename)
         open(filepath, 'w', encoding='utf-8').write(result)  # Then save it
         print(f'Saved {filename} in {filepath}')
-        
+
     else:
-        print('The URL is broken! Check the URL to the holdings csv is correct')
+        print('The URL is broken!\n',
+              'Check the URL to the holdings csv is correct')
 print('All files loaded!\n')

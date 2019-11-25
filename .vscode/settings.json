@@ -1,5 +1,6 @@
 {
     "python.linting.flake8Enabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "/usr/local/bin/python3"
+    "python.pythonPath": "/Users/bobbay/miniconda3/envs/jinfund/bin/python",
+    "python.linting.pylintEnabled": false
 }
