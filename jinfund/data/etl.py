@@ -1,3 +1,4 @@
+# Standard library imports
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -9,7 +10,6 @@ import csv
 data_folder = setup.commonData().datafolder
 country_dict = setup.commonData().countrydict()
 
-
 # Vanguard ETL
 def blackrock_etl(date):
     [urls, etfs] = setup.commonData().blackrock()
@@ -17,7 +17,6 @@ def blackrock_etl(date):
     # Get filenames of blackrock etf's
     csvfiles = []
     for dirname, dirnames, filenames in os.walk(data_folder):
-        print(dirnames)
         for filename in filenames:
             fpath = os.path.join(dirname, filename)
 
@@ -67,9 +66,9 @@ def blackrock_etl(date):
             # Add etf symbol
             # Extract ETF name from filepath
             try:  # Windows file naming, referenced from the root
-                etf = file.split('_')[0].split('\\')[2]
+                etf = file.split('_')[0].split('\\')[3]
             except IndexError:  # Linux file naming, referenced from the root
-                etf = file.split('_')[0].split('/')[2]
+                etf = file.split('_')[0].split('/')[3]
             finally:
                 df.insert(1, 'etf', etf)
 
@@ -111,9 +110,9 @@ def vanguard_etl(date):
             # Include column of etf name
             # Extract ETF name from filepath
             try:  # Windows file naming
-                etf = file.split('_')[0].split('\\')[2]
+                etf = file.split('_')[0].split('\\')[3]
             except IndexError:  # Linux file naming
-                etf = file.split('_')[0].split('/')[2]
+                etf = file.split('_')[0].split('/')[3]
             finally:
                 df.insert(1, 'etf', etf)
 

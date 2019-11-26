@@ -6,11 +6,13 @@ import os
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from pkg_resources import resource_filename
 
 
 class commonData:
     def __init__(self):
-        self.datafolder = os.path.join('data','raw')
+        # Referenced from root
+        self.datafolder = resource_filename('data', 'resources')
 
     def blackrock(self):
         IVV_URL = 'https://www.blackrock.com/au/individual/products/275304/fund/1478358644060.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund'
