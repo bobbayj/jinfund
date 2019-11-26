@@ -5,7 +5,7 @@ import requests
 import json
 import pandas as pd
 import os
-import setup
+from . import setup
 
 # Get variables from setup module
 [urls, etfs] = setup.commonData().vanguard()

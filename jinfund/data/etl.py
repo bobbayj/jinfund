@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from . import setup
 import os
 import csv
-import setup
 
 # Get variables from setup module
 data_folder = setup.commonData().datafolder
@@ -17,6 +17,7 @@ def blackrock_etl(date):
     # Get filenames of blackrock etf's
     csvfiles = []
     for dirname, dirnames, filenames in os.walk(data_folder):
+        print(dirnames)
         for filename in filenames:
             fpath = os.path.join(dirname, filename)
 
@@ -65,10 +66,10 @@ def blackrock_etl(date):
 
             # Add etf symbol
             # Extract ETF name from filepath
-            try:  # Windows file naming
-                etf = file.split('_')[0].split('\\')[1]
-            except IndexError:  # Linux file naming
-                etf = file.split('_')[0].split('/')[1]
+            try:  # Windows file naming, referenced from the root
+                etf = file.split('_')[0].split('\\')[2]
+            except IndexError:  # Linux file naming, referenced from the root
+                etf = file.split('_')[0].split('/')[2]
             finally:
                 df.insert(1, 'etf', etf)
 
@@ -110,9 +111,9 @@ def vanguard_etl(date):
             # Include column of etf name
             # Extract ETF name from filepath
             try:  # Windows file naming
-                etf = file.split('_')[0].split('\\')[1]
+                etf = file.split('_')[0].split('\\')[2]
             except IndexError:  # Linux file naming
-                etf = file.split('_')[0].split('/')[1]
+                etf = file.split('_')[0].split('/')[2]
             finally:
                 df.insert(1, 'etf', etf)
 
@@ -153,6 +154,7 @@ def etl_preprocessing(blackrock_date='2019-11-22', vanguard_date='2019-10-31'):
         'sectorName',
         'countryCode',
         'Weighting',
+        'etf'
     ]
 
     # Cut only the columns needed from the BlackRock and Vanguard dataframes

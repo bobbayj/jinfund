@@ -4,7 +4,7 @@ Downloads Blackrock ETF holdings data from the Blackrock site
 from datetime import datetime
 import requests
 import os
-import setup
+from . import setup
 
 
 # Helper function

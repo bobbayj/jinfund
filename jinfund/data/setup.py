@@ -10,7 +10,7 @@ import yfinance as yf
 
 class commonData:
     def __init__(self):
-        self.datafolder = r'raw'
+        self.datafolder = os.path.join('data','raw')
 
     def blackrock(self):
         IVV_URL = 'https://www.blackrock.com/au/individual/products/275304/fund/1478358644060.ajax?fileType=csv&fileName=IVV_holdings&dataType=fund'
@@ -119,8 +119,9 @@ class quickTools:
 
 class stockts:
     def __init__(self, ticker):
-        '''Dependency: Requires yfinance
-Parameters: ticker; must be readable by Yahoo Finance, i.e. have the appropriate exchange suffix
+        '''
+        Dependency: Requires yfinance
+        Parameters: ticker; must be readable by Yahoo Finance, i.e. have the appropriate exchange suffix
         '''
         self.obj = yf.Ticker(ticker)
         self.info = self.obj.info
