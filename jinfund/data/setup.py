@@ -117,35 +117,3 @@ class quickTools:
         class_df = pd.read_csv(class_fname, index_col=False)
 
         return class_df
-
-
-class stockts:
-    def __init__(self, ticker):
-        '''
-        Dependency: Requires yfinance
-        Parameters: ticker; must be readable by Yahoo Finance, i.e. have the appropriate exchange suffix
-        '''
-        self.obj = yf.Ticker(ticker)
-        self.info = self.obj.info
-
-    def returns(self):
-        self.df = self.obj.history(period='max')
-        self.df['Capital Return'] = self.df['Close'] / self.df['Close'].shift(1)
-        self.df['Income Return'] = self.df['Dividends'] / self.df['Close'].shift(1)
-        self.df['Total Return'] = (self.df['Close'] + self.df['Dividends']) / self.df['Close'].shift(1)
-
-        # Drop first row because it is now useless
-        self.df.drop(self.df.index[0], inplace=True)
-
-        # Calculate cumulative returns
-        self.df['Cum. Total Return'] = np.cumprod(self.df['Total Return'].values)
-
-        cols_to_return = [
-            'Close',
-            'Dividends',
-            'Capital Return',
-            'Income Return',
-            'Total Return',
-            'Cum. Total Return',
-        ]
-        return self.df[cols_to_return]
