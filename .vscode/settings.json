@@ -1,6 +1,6 @@
 {
     "python.linting.flake8Enabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "/Users/bobbay/miniconda3/envs/jinfund/bin/python",
+    "python.pythonPath": "C:\\Users\\BobJin\\Anaconda3\\python.exe",
     "python.linting.pylintEnabled": false
 }
