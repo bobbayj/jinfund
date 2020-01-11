@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import copy
 
 # Third-party imports
 
@@ -17,21 +18,17 @@ class Portfolio:
         trades = Trades()
         self.df_txs = trades.all()
         self.portfolio_dates = datehandler.date_list(self.df_txs.index[-1], datetime.today().date())
-        self.daily_holdings = self.build_portfolio_from_all()
+        self.daily_holdings = self.build_portfolio_from_txs()
 
-    def build_portfolio_from_all(self):
-        portfolio_df = self.build_df_from_txns()
-        portfolio_df = self.add_divs(portfolio_df)
-        # portfolio_df = self.add_stocksplits()
-        return portfolio_df
-
-    def build_df_from_txns(self):
+    def build_df_from_txs(self):
         '''Builds daily portfolio holdings from transactions data
         
         Returns:
             DataFrame -- index = datetime.date | columns = tickers | values = {'vol', 'vwap'}
         '''
+        
         portfolio_holdings = {key: None for key in self.portfolio_dates}
+        portfolio_df = add_divs_splits(portfolio_df)
 
         trade_dates = self.df_txs.index.to_list()
         trade_tickers = self.df_txs.Ticker.to_list()
@@ -77,7 +74,7 @@ class Portfolio:
                     trade_date = trade_dates.pop()
                 else:
                     break
-            portfolio_holdings[portfolio_date] = holdings.copy()
+            portfolio_holdings[portfolio_date] = copy.deepcopy(holdings)  # To preserve the mutability of each daily holding
 
         portfolio_df = pd.DataFrame.from_dict(
             portfolio_holdings,
@@ -87,31 +84,33 @@ class Portfolio:
 
         return portfolio_df
 
-    def add_divs(self, portfolio_df):
-        tickers = portfolio_df.columns.to_list()
-        for counter,ticker in enumerate(tickers):
-            print(f'\rFetching {ticker} dividends... Progress: {counter}/{len(tickers)-1}', end="", flush=True)
-            if ticker != 'cash':
-                market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
-                stock = yahoolookup.Stock(ticker, market)
-                try:  # Catch if the stock has been delisted/is invalid
-                    divs = stock.dividends()
-                    if len(divs) == 0:
+        def add_divs_splits(self, portfolio_df):
+            tickers = portfolio_df.columns.to_list()
+            for counter,ticker in enumerate(tickers):
+                print(f'\rFetching {ticker} corporate actions... Progress: {counter}/{len(tickers)-1}', end="", flush=True)
+                if ticker != 'cash':
+                    market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
+                    stock = yahoolookup.Stock(ticker, market)
+                    try:  # Catch if the stock has been delisted/is invalid
+                        actions = stock.actions()
+                        if len(actions) == 0:
+                            continue
+                    except:
                         continue
-                except:
-                    continue
-                
-                divs.index = divs.index.date
-                mask = (divs.index >= portfolio_df[ticker].last_valid_index())
-                divs = divs.loc[mask]
-                
-                for date, div in divs.items():
-                    portfolio_df.at[date,ticker]['div'] = div * portfolio_df.at[date,ticker]['vol']
+                    
+                    actions.index = actions.index.date
+                    mask = (actions.index >= portfolio_df[ticker].last_valid_index())
+                    actions = actions.loc[mask]
+                    
+                    for date, row in actions.iterrows():
+                        div = row['Dividends']
+                        split = row['Stock Splits']
+                        if div > 0:
+                            portfolio_df.at[date,ticker]['div'] = div
+                        if split > 0:
+                            portfolio_df.at[date,ticker]['split'] = split
 
-        return portfolio_df
-
-    def add_stocksplits(self, ticker):
-        pass
+            return portfolio_df
 
     def view(self, start_date=datetime.today().date(), end_date=None):
         '''Fetches porfolio holdings of the given date. Will attempt to convert the lookup date to datetime.date format
