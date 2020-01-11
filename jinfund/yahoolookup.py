@@ -10,6 +10,7 @@ class Stock:
     '''    
     def __init__(self,ticker,market):
         yticker = f'{ticker}.{self.market_mapper(market)}'
+        
         self.stock = yf.Ticker(yticker)
 
     @staticmethod
@@ -18,6 +19,9 @@ class Stock:
             'ASX': 'AX',
         }
         return market_mapping[market_code]
+
+    def info(self):
+        return self.stock.info
 
     def actions(self):
         return self.stock.actions

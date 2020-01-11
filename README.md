@@ -27,6 +27,7 @@ Can measuring the exposure of ETF investments by:
 - Repo set to private to protect holdings data.
 - .gitignore will ignore files prefixed with `scrt`
 - Price data not currently stored in a database; streamed direct from Yahoo Finance
+  - If the stock is not in Yahoo Finance, it will not be available at all
 
 ---
 

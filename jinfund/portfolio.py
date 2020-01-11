@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # Local imports
 from trades.commsec import Trades
 import datehandler
-from yahoolookup import Stock
+import yahoolookup
 
 class Portfolio:
 
@@ -16,28 +16,28 @@ class Portfolio:
         # Create portfolio from trades
         trades = Trades()
         self.df_txs = trades.all()
-        self.portfolio_dates = None
+        self.portfolio_dates = datehandler.date_list(self.df_txs.index[-1], datetime.today().date())
+        self.daily_holdings = self.build_portfolio_from_all()
 
-        self.daily_holdings = self.build_from_txs()
+    def build_portfolio_from_all(self):
+        portfolio_df = self.build_df_from_txns()
+        portfolio_df = self.add_divs(portfolio_df)
+        # portfolio_df = self.add_stocksplits()
+        return portfolio_df
 
-    def build_from_txs(self):
+    def build_df_from_txns(self):
         '''Builds daily portfolio holdings from transactions data
         
         Returns:
-            dict -- keys = dates in datetime.date | values = {tickers: 'vol', 'vwap'}
+            DataFrame -- index = datetime.date | columns = tickers | values = {'vol', 'vwap'}
         '''
-        df = self.df_txs
-
-        inception_date = df.index[-1]
-        today = datetime.today().date()
-        self.portfolio_dates = datehandler.date_list(inception_date, today)
         portfolio_holdings = {key: None for key in self.portfolio_dates}
 
-        trade_dates = df.index.to_list()
-        trade_tickers = df.Ticker.to_list()
-        trade_types = df.TradeType.to_list()
-        trade_volumes = df.Volume.to_list()
-        trade_prices = df.EffectivePrice.to_list()
+        trade_dates = self.df_txs.index.to_list()
+        trade_tickers = self.df_txs.Ticker.to_list()
+        trade_types = self.df_txs.TradeType.to_list()
+        trade_volumes = self.df_txs.Volume.to_list()
+        trade_prices = self.df_txs.EffectivePrice.to_list()
 
         holdings = {
             'cash':0,
@@ -78,26 +78,37 @@ class Portfolio:
                 else:
                     break
             portfolio_holdings[portfolio_date] = holdings.copy()
-        return portfolio_holdings
 
-    def add_divs(self, ticker, show_divs=False):
-        market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
-        stock = Stock(ticker, market)
-        divs = stock.dividends()
+        portfolio_df = pd.DataFrame.from_dict(
+            portfolio_holdings,
+            orient='index'
+            )
+        portfolio_df.index.names = ['Date']
 
-        divs.index = divs.index.date
-        
-        if len(divs) < 1:
-            return
-        
-        for date, div in divs.items():
-            print(type(date))
-            print(self.daily_holdings.at[date,ticker], date, div)
-            # self.daily_holdings.at[date,ticker]['div'] = div
-            self.daily_holdings.loc[date].at[ticker]['div'] = div
-        if show_divs:
-            print(divs)
-        return divs
+        return portfolio_df
+
+    def add_divs(self, portfolio_df):
+        tickers = portfolio_df.columns.to_list()
+        for counter,ticker in enumerate(tickers):
+            print(f'\rFetching {ticker} dividends... Progress: {counter}/{len(tickers)-1}', end="", flush=True)
+            if ticker != 'cash':
+                market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
+                stock = yahoolookup.Stock(ticker, market)
+                try:  # Catch if the stock has been delisted/is invalid
+                    divs = stock.dividends()
+                    if len(divs) == 0:
+                        continue
+                except:
+                    continue
+                
+                divs.index = divs.index.date
+                mask = (divs.index >= portfolio_df[ticker].last_valid_index())
+                divs = divs.loc[mask]
+                
+                for date, div in divs.items():
+                    portfolio_df.at[date,ticker]['div'] = div * portfolio_df.at[date,ticker]['vol']
+
+        return portfolio_df
 
     def add_stocksplits(self, ticker):
         pass
@@ -112,25 +123,13 @@ class Portfolio:
             dict -- All holdings as of lookup_date
         '''
         start_date = datehandler.to_iso(start_date)
-        view_df = pd.DataFrame()
 
         if end_date:
             end_date = datehandler.to_iso(end_date)
-            dates = datehandler.date_list(start_date, end_date)
-            for date in dates:
-                if date in self.portfolio_dates:
-                    df = pd.DataFrame.from_dict(
-                        {date: self.daily_holdings[date]},
-                        orient='index'
-                        )
-                    view_df = view_df.append(df)
+            mask = (self.daily_holdings.index > start_date) & (self.daily_holdings.index <= end_date)
         else:
             if start_date not in self.portfolio_dates:
                 start_date = self.portfolio_dates[0]
-            
-            view_df = pd.DataFrame.from_dict(
-                {start_date: self.daily_holdings[start_date]},
-                orient='index'
-                )
-
-        return view_df
+            mask = (self.daily_holdings.index == start_date)
+    
+        return self.daily_holdings.loc[mask]
