@@ -52,7 +52,7 @@ class Portfolio:
                 trade_price = trade_prices.pop()
 
                 if trade_ticker in holdings:
-                    if trade_type == 'B':
+                    if trade_type == 'B':  # Trade is a buy
                         new_vol = holdings[trade_ticker]['vol'] + trade_vol
                         new_vwap = (
                             (holdings[trade_ticker]['vol']*holdings[trade_ticker]['vwap']
@@ -63,7 +63,7 @@ class Portfolio:
                             'vwap': np.round(new_vwap, decimals=3),
                             }
                         holdings['cash'] -= np.round(trade_vol*trade_price, decimals=3)
-                    else:
+                    else:  # Trade is a sale
                         holdings[trade_ticker]['vol'] -= trade_vol
                         holdings['cash'] += np.round(trade_vol*trade_price, decimals=3)
                 else:
@@ -77,9 +77,7 @@ class Portfolio:
                     trade_date = trade_dates.pop()
                 else:
                     break
-                trade_date = trade_dates.pop()
-            portfolio_holdings[portfolio_date] = holdings
-
+            portfolio_holdings[portfolio_date] = holdings.copy()
         return portfolio_holdings
 
     def add_divs(self, ticker, show_divs=False):
