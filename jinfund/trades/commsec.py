@@ -1,15 +1,17 @@
-'''
-Reads and prepares Commsec transactions.csv files
-
-Note that transactions only show on the T+2 date
-'''
+# System imports
 import csv
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 
 # Structure as Class object
 class Trades:
+    '''
+    Reads and prepares Commsec transactions.csv files
+
+    Note that transactions only show on the T+2 date
+    '''
     def __init__(self):
         dirname =  Path(__file__).parents[0]
         csvfiles = sorted(list(dirname.glob('*csv')))
@@ -48,9 +50,12 @@ class Trades:
 
         # Flatten list of trade data to columns
         temp_df = df.Trades.apply(pd.Series)
-        temp_df.columns = ['TradeType','Volume','AsxCode','TradePrice']
+        temp_df.columns = ['TradeType','Volume','Ticker','TradePrice']
         df = df.join(temp_df)
-        
+
+        # Convert string dates to datetime.date
+        df.Date = pd.to_datetime(df.Date, dayfirst=True).dt.date
+
         # Change str to float
         df['Volume'] = pd.to_numeric(df['Volume'], downcast='float')
         df['TradePrice'] = pd.to_numeric(df['TradePrice'], downcast='float')
@@ -63,20 +68,35 @@ class Trades:
         df['Brokerage'] = df['Volume']*(df['EffectivePrice'] - df['TradePrice'])
         df['Brokerage'] = np.round(np.abs(df['Brokerage']),decimals=0)
 
+        # Add market for all trades
+        df['Market'] = 'ASX'
+
         # Clean df for export
-        cols = ['Date','AsxCode','TradeType','Volume','TradePrice','EffectivePrice','Brokerage']
+        cols = ['Date','Ticker','Market','TradeType','Volume','TradePrice','EffectivePrice','Brokerage']
         df = df[cols]
         df = df.set_index('Date')
 
         return df
     
     def all(self):
+        '''
+        Returns:
+            Dataframe -- all transactions
+        '''        
         return self.tx_df
     
     def buys(self):
+        '''
+        Returns:
+            Dataframe -- only buy transactions
+        '''        
         df = self.tx_df[self.tx_df.TradeType == 'B']
         return df
 
     def sells(self):
+        '''
+        Returns:
+            Dataframe -- only sell transactions
+        '''        
         df = self.tx_df[self.tx_df.TradeType == 'S']
         return df

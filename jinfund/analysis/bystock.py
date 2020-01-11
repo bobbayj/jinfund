@@ -50,11 +50,11 @@ class portfolio:
 
 
 class yah:
+    '''
+    Dependency: Requires yfinance
+    Parameters: ticker; must be readable by Yahoo Finance, i.e. have the appropriate exchange suffix
+    '''
     def __init__(self, ticker):
-        '''
-        Dependency: Requires yfinance
-        Parameters: ticker; must be readable by Yahoo Finance, i.e. have the appropriate exchange suffix
-        '''
         self.obj = yf.Ticker(ticker)
         self.info = self.obj.info
 
