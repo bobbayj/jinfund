@@ -23,11 +23,11 @@ class Portfolio:
     def build_portfolio(self):
         portfolio_df = self.build_df_from_txs()
         portfolio_df = self.add_divs_splits(portfolio_df)
-
+        # portfolio_df = self.add_scrip_remove_div(portfolio_df)
         return portfolio_df
 
     def build_df_from_txs(self):
-        '''Builds daily portfolio holdings from transactions data
+        '''Builds daily portfolio holdings from broker transactions data
         
         Returns:
             DataFrame -- index = datetime.date | columns = tickers | values = {'vol', 'vwap'}
@@ -90,6 +90,15 @@ class Portfolio:
         return portfolio_df
 
     def add_divs_splits(self, portfolio_df):
+        '''Reflects cash dividends and stocksplits in the portfolio dataframe.
+        This uses public data; scrip dividends are not reflected, which are personal in nature
+        
+        Arguments:
+            portfolio_df {dataframe} -- Portfolio dataframe created from transactions
+        
+        Returns:
+            dataframe -- Portfolio dataframe with cash dividend and splits as new keys. Vol and price also changed for splits
+        '''        
         tickers = portfolio_df.columns.to_list()
         for counter,ticker in enumerate(tickers):
             print(f'\rFetching {ticker} corporate actions...'
@@ -127,6 +136,11 @@ class Portfolio:
                             holding['vwap'] = holding['vwap'] / split
 
         return portfolio_df
+
+    def add_scrip_remove_div(self, portfolio_df):
+        # Read csv of scrip receives - this is manually maintained
+            # Columns: date, ticker, vol
+        pass
 
     def view(self, start_date=datetime.today().date(), end_date=None):
         '''Fetches porfolio holdings of the given date. Will attempt to convert the lookup date to datetime.date format
