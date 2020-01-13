@@ -18,7 +18,13 @@ class Portfolio:
         trades = Trades()
         self.df_txs = trades.all()
         self.portfolio_dates = datehandler.date_list(self.df_txs.index[-1], datetime.today().date())
-        self.daily_holdings = self.build_portfolio_from_txs()
+        self.daily_holdings = self.build_portfolio()
+
+    def build_portfolio(self):
+        portfolio_df = self.build_df_from_txs()
+        portfolio_df = self.add_divs_splits(portfolio_df)
+
+        return portfolio_df
 
     def build_df_from_txs(self):
         '''Builds daily portfolio holdings from transactions data
@@ -32,101 +38,95 @@ class Portfolio:
         trade_volumes = self.df_txs.Volume.to_list()
         trade_prices = self.df_txs.EffectivePrice.to_list()
         
-        # portfolio_holdings = {key: None for key in self.portfolio_dates}
-        portfolio_df = pd.DataFrame(index=self.portfolio_dates, columns=['cash', trade_tickers])
-        portfolio_df = add_divs_splits(portfolio_df)
+        portfolio_holdings = {key: None for key in self.portfolio_dates}
 
-
-        # holdings = {
-        #     'cash':0,
-        #     }
+        holdings = {
+            'cash':0,
+            }
 
         trade_date = trade_dates.pop()
 
-        for trade_date in trade_dates:
-            trade_ticker = trade_tickers.pop()
-            trade_type = trade_types.pop()
-            trade_vol = trade_volumes.pop()
-            trade_price = trade_prices.pop()
+        for portfolio_date in sorted(self.portfolio_dates, reverse=False):
+            while trade_date == portfolio_date:
+                trade_ticker = trade_tickers.pop()
+                trade_type = trade_types.pop()
+                trade_vol = trade_volumes.pop()
+                trade_price = trade_prices.pop()
 
-            # portfolio_df.at[trade_date,trade_ticker]
-
-            ### TO-DO
-            # Dot in the trades in addition to the dividends and splits
-            # Backfill data to today
-            # Function: use trade_date and trade_date-1 to update trade_date holdings (incl. stock split)
-            ### END TO-DO
-
-        # for portfolio_date in sorted(self.portfolio_dates, reverse=False):
-        #     while trade_date == portfolio_date:
-        #         trade_ticker = trade_tickers.pop()
-        #         trade_type = trade_types.pop()
-        #         trade_vol = trade_volumes.pop()
-        #         trade_price = trade_prices.pop()
-
-        #         if trade_ticker in holdings:
-        #             if trade_type == 'B':  # Trade is a buy
-        #                 new_vol = holdings[trade_ticker]['vol'] + trade_vol
-        #                 new_vwap = (
-        #                     (holdings[trade_ticker]['vol']*holdings[trade_ticker]['vwap']
-        #                     + trade_vol*trade_price) / new_vol
-        #                 )
-        #                 holdings[trade_ticker] = {
-        #                     'vol': new_vol,
-        #                     'vwap': np.round(new_vwap, decimals=3),
-        #                     }
-        #                 holdings['cash'] -= np.round(trade_vol*trade_price, decimals=3)
-        #             else:  # Trade is a sale
-        #                 holdings[trade_ticker]['vol'] -= trade_vol
-        #                 holdings['cash'] += np.round(trade_vol*trade_price, decimals=3)
-        #         else:
-        #             holdings[trade_ticker] = {
-        #                 'vol': trade_vol,
-        #                 'vwap': np.round(trade_price, decimals=3),
-        #             }
-        #             holdings['cash'] -= np.round(trade_vol*trade_price, decimals=3)
+                if trade_ticker in holdings:
+                    if trade_type == 'B':  # Trade is a buy
+                        new_vol = holdings[trade_ticker]['vol'] + trade_vol
+                        new_vwap = (
+                            (holdings[trade_ticker]['vol']*holdings[trade_ticker]['vwap']
+                            + trade_vol*trade_price) / new_vol
+                        )
+                        holdings[trade_ticker] = {
+                            'vol': new_vol,
+                            'vwap': np.round(new_vwap, decimals=3),
+                            }
+                        holdings['cash'] -= np.round(trade_vol*trade_price, decimals=3)
+                    else:  # Trade is a sale
+                        holdings[trade_ticker]['vol'] -= trade_vol
+                        holdings['cash'] += np.round(trade_vol*trade_price, decimals=3)
+                else:
+                    holdings[trade_ticker] = {
+                        'vol': trade_vol,
+                        'vwap': np.round(trade_price, decimals=3),
+                    }
+                    holdings['cash'] -= np.round(trade_vol*trade_price, decimals=3)
                 
-        #         if len(trade_dates) > 0:
-        #             trade_date = trade_dates.pop()
-        #         else:
-        #             break
-        #     portfolio_holdings[portfolio_date] = copy.deepcopy(holdings)  # To preserve the mutability of each daily holding
+                if len(trade_dates) > 0:
+                    trade_date = trade_dates.pop()
+                else:
+                    break
+            portfolio_holdings[portfolio_date] = copy.deepcopy(holdings)  # To preserve the mutability of each daily holding
 
-        # portfolio_df = pd.DataFrame.from_dict(
-        #     portfolio_holdings,
-        #     orient='index'
-        #     )
-        # portfolio_df.index.names = ['Date']
+        portfolio_df = pd.DataFrame.from_dict(
+            portfolio_holdings,
+            orient='index'
+            )
+        portfolio_df.index.names = ['Date']
 
         return portfolio_df
 
-        def add_divs_splits(self, portfolio_df):
-            tickers = portfolio_df.columns.to_list()
-            for counter,ticker in enumerate(tickers):
-                print(f'\rFetching {ticker} corporate actions... Progress: {counter}/{len(tickers)-1}', end="", flush=True)
-                if ticker != 'cash':
-                    market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
-                    stock = yahoolookup.Stock(ticker, market)
-                    try:  # Catch if the stock has been delisted/is invalid
-                        actions = stock.actions()
-                        if len(actions) == 0:
-                            continue
-                    except:
-                        continue
-                    
-                    actions.index = actions.index.date
-                    mask = (actions.index >= portfolio_df[ticker].last_valid_index())
-                    actions = actions.loc[mask]
-                    
-                    for date, row in actions.iterrows():
-                        div = row['Dividends']
-                        split = row['Stock Splits']
-                        if div > 0:
-                            portfolio_df.at[date,ticker]['div'] = div
-                        if split > 0:
-                            portfolio_df.at[date,ticker]['split'] = split
+    def add_divs_splits(self, portfolio_df):
+        tickers = portfolio_df.columns.to_list()
+        for counter,ticker in enumerate(tickers):
+            print(f'\rFetching {ticker} corporate actions...'
+                f'Progress: {counter}/{len(tickers)-1}',
+                end="", flush=True
+            )
 
-            return portfolio_df
+            if ticker != 'cash':
+                market = self.df_txs[self.df_txs['Ticker']==ticker].Market.iloc[0]
+                stock = yahoolookup.Stock(ticker, market)
+                try:  # Catch if the stock has been delisted/is invalid
+                    actions = stock.actions()
+                    if len(actions) == 0:
+                        continue
+                except:  # Issue fetching stock data...yfinance will show error and we skip
+                    continue
+                
+                actions.index = actions.index.date
+                mask_actions = (actions.index >= portfolio_df[ticker].last_valid_index())
+                actions = actions.loc[mask_actions]
+                
+                for action_date, row in actions.iterrows():
+                    div = row['Dividends']
+                    split = row['Stock Splits']
+                    if div > 0:
+                        portfolio_df.at[action_date,ticker]['div'] = div
+                    if split > 0:
+                        portfolio_df.at[action_date,ticker]['split'] = split
+
+                        # Update all vols and VWAPs after this to reflect split
+                        mask_split = (portfolio_df.index >= action_date)
+                        dates_to_update_with_split = portfolio_df.loc[mask_split, ticker]
+                        for holding in dates_to_update_with_split.array:
+                            holding['vol'] = holding['vol'] * split
+                            holding['vwap'] = holding['vwap'] / split
+
+        return portfolio_df
 
     def view(self, start_date=datetime.today().date(), end_date=None):
         '''Fetches porfolio holdings of the given date. Will attempt to convert the lookup date to datetime.date format

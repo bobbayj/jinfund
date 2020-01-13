@@ -35,6 +35,8 @@ Can measuring the exposure of ETF investments by:
 
 1. ~~Pipeline to process transaction history from Commsec~~ **DONE**
 2. Pipeline to pull dividends, scrip, and stock split data
+    - Unable to pull private dividends, scrip, and stock split data
+    - Using public dividend and stock split data
 3. Pipeline to source data from yfinance for portfolio
 4. Analysis framework
     - Returns; capital gains, total return
