@@ -87,9 +87,9 @@ class Portfolio:
     def _calculate_value(self, df):
         # Calculate value of each ticker per day
         for ticker in df.columns.levels[0]:
-            df.loc[:,(ticker,'book_value')] = df[ticker]['vol'] * df[ticker]['vwap']
-            df.loc[:,(ticker,'market_value')] = df[ticker]['vol'] * df[ticker]['close_price']
-
+            if ticker != 'cash':
+                df.loc[:,(ticker,'book_value')] = df[ticker]['vol'] * df[ticker]['vwap']
+                df.loc[:,(ticker,'market_value')] = df[ticker]['vol'] * df[ticker]['close_price']
         return df
 
     def _sort_df(self,df):
