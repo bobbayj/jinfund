@@ -31,3 +31,6 @@ class Stock:
 
     def splits(self):
         return self.stock.splits
+    
+    def history(self,start,end):
+        return self.stock.history(start=start,end=end, actions=False)
