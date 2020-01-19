@@ -3,7 +3,7 @@ import csv
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from datetime import datetime
+
 
 # Structure as Class object
 class Trades:
@@ -13,8 +13,8 @@ class Trades:
     Note that transactions only show on the T+2 date
     '''
     def __init__(self):
-        dirname =  Path(__file__).parents[0]
-        csvfiles = sorted(list(dirname.glob('*csv')))
+        dirname = Path(__file__).parents[1] / 'data'
+        csvfiles = sorted(list(dirname.glob('commsec*')))
         latest_csv = csvfiles[-1]
 
         tx_df = pd.read_csv(latest_csv)
@@ -22,14 +22,14 @@ class Trades:
 
         self.tx_df = tx_df
 
-    def digest_txs(self,df):
+    def digest_txs(self, df):
         """Digest raw transactions.csv dataframe
         
         EffectivePrice includes brokerage
 
         Arguments:
             df {Dataframe} -- Raw transactions.csv loaded into a dataframe
-        """        
+        """
         details = df['Details'].tolist()
         trades = []
 
@@ -78,6 +78,7 @@ class Trades:
 
         return df
     
+    @property
     def all(self):
         '''
         Returns:
@@ -85,6 +86,7 @@ class Trades:
         '''        
         return self.tx_df
     
+    @property
     def buys(self):
         '''
         Returns:
@@ -93,10 +95,24 @@ class Trades:
         df = self.tx_df[self.tx_df.TradeType == 'B']
         return df
 
+    @property
     def sells(self):
         '''
         Returns:
             Dataframe -- only sell transactions
         '''        
         df = self.tx_df[self.tx_df.TradeType == 'S']
+        return df
+
+    @property
+    def cashflow(self):
+        '''Returns a series for the change in cash balance
+        
+        Returns:
+            Series -- cash per trade, indexed by portfolio dates
+        '''
+        df = pd.DataFrame(index=self.tx_df.index)
+        df['Type'] = np.where(self.tx_df.TradeType == 'B', -1, 1)
+        df['Value'] = self.tx_df.Volume * self.tx_df.EffectivePrice * df.Type
+        df = df.drop(columns = 'Type')
         return df

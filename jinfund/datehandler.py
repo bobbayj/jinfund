@@ -5,7 +5,7 @@ from dateutil.parser import parse
 
 def to_iso(date):
     if type(date) is not datetime.date:
-        date = pd.to_datetime(date, dayfirst=True).date()
+        date = pd.to_datetime(date, dayfirst=True)
     return date
 
 def date_list(start_date, end_date, only_weekdays=True, ascending=False):
