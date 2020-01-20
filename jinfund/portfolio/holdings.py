@@ -14,28 +14,38 @@ import yahoolookup
 
 
 class Portfolio:
-
     def __init__(self):
+        '''View portfolio data and returns
+        '''
+        # Dates and file paths
+        self.today = datetime.today().date()
+        self.save_dir = Path(__file__).parents[1] / 'data'
+        self.check_date = datehandler.date_list(self.today-timedelta(5), self.today)[0]
+        self.portfolio_csv_name = f'portfolio_{self.check_date}.csv'
+        self.portfolio_csv_path = self.save_dir / self.portfolio_csv_name
+        
         # Create portfolio from trades
         self.trades = Trades()
         self.df_txs = self.trades.all
-        self.portfolio_dates = datehandler.date_list(self.df_txs.index[-1], datetime.today().date())
+        self.portfolio_dates = datehandler.date_list(self.df_txs.index[-1], self.today)
+
+        # Props
         self.daily_holdings = self.build_portfolio()
 
     def build_portfolio(self):
-        save_dir = Path(__file__).parents[1] / 'data'
-        today = datetime.today().date()
-        check_date = datehandler.date_list(today-timedelta(5),today)[0]
-        portfolio_csv_name = f'portfolio_{check_date}.csv'
-        portfolio_csv_path = save_dir / portfolio_csv_name
-
-        if portfolio_csv_path.is_file():
-            portfolio_df = pd.read_csv(portfolio_csv_path,
+        '''Builds portfolio from dataframe, including all divs, splits, close prices, values
+        If latest portfolio exists on file, will load instead.
+        
+        Returns:
+            dataframe -- portfolio as a dataframe
+        '''        
+        if self.portfolio_csv_path.is_file():
+            portfolio_df = pd.read_csv(self.portfolio_csv_path,
                                        parse_dates=True, dayfirst=True,
                                        index_col=0, header=[0,1],
                                        )
             portfolio_df.index = pd.to_datetime(portfolio_df.index)
-            print(f'Latest portfolio loaded: {check_date}')
+            print(f'Latest portfolio loaded: {self.check_date}')
         else:
             portfolio_df = self._build_df_from_txs()
             portfolio_df = self._add_divs_splits(portfolio_df)
@@ -45,24 +55,50 @@ class Portfolio:
 
             # Save as csv
             save_name = f'portfolio_{portfolio_df.index[-1].date()}.csv'
-            save_path = save_dir / save_name
+            save_path = self.save_dir / save_name
             portfolio_df.to_csv(save_path)
-            print(f'\nLatest portfolio created: {check_date}')
+            print(f'\nLatest portfolio created: {self.check_date}')
 
         portfolio_df = self._sort_df(portfolio_df)
         return portfolio_df
 
-    def returns(self, start_date, end_date=None):
-        # Numerator: End value - (initial value + cashflow)
-        # Denominator: Initial value + cashflow
-        # Cashflow comes from the cash vol
+    def returns(self, ticker='portfolio',start_date=None, end_date=None):
+        '''Calculates the time-weighted average return
+        
+        Keyword Arguments:
+            ticker {str} -- Ticker to analyse returns for (default: {'portfolio'})
+            start_date {str} -- Start date to begin return analysis (default: {None})
+            end_date {str} -- End date to begin return analysis (default: {None})
+        
+        Returns:
+            [type] -- [description]
+        '''        
+        if start_date is None:
+            start_date = self.portfolio_dates[-1]
+        if end_date is None:
+            end_date = self.portfolio_dates[0]
+        start_date = datehandler.to_iso(start_date)
+        end_date = datehandler.to_iso(end_date)
+        
+        df = self._returns_df()
 
+        mask = (df.index >= start_date) & (df.index <= end_date)
+        ticker_return_df = df.loc[mask][ticker]['daily_return'] + 1
+        ticker_return = ticker_return_df.cumprod()
+        ticker_return -= 1
 
-        if end_date not in self.portfolio_dates:
-                end_date = self.portfolio_dates[0]
-
-
-        return
+        # Printing
+        if ticker == 'portfolio':  # Rename for printing
+            ticker = 'the Entire Portfolio'
+        start_date = ticker_return.first_valid_index()
+        end_date = ticker_return.last_valid_index()
+        ticker_return_statement = (
+            f'Time-weighted Average Return for {ticker} over the period {start_date.date()} to {end_date.date()}:'
+            f'\n\t{(ticker_return.loc[ticker_return.last_valid_index()]*100):.2f}%'
+        )
+        print(ticker_return_statement)
+        
+        return ticker_return_df, df
 
     def view(self, start_date=datetime.today(), end_date=None):
         '''Fetches porfolio holdings of the given date. Will attempt to convert the lookup date to datetime.date format
@@ -101,7 +137,7 @@ class Portfolio:
             if ticker == 'cash':
                 continue
 
-            print(f'\rFetching {ticker} corporate actions...'
+            print(f'\rFetching {ticker} historical prices...'
                 f'Progress: {counter+1}/{len(df.columns.levels[0])-1}',
                 end="", flush=True
                 )
@@ -113,7 +149,7 @@ class Portfolio:
             try:  # Catch if the stock has been delisted/is invalid
                 close_price = stock.history(start=start_date, end=end_date)['Close']
             except Exception as e:  # Issue fetching stock data...yfinance will show error and we skip
-                print(f'{e}: Skipping...')
+                print(f'{e}: Skipping {ticker}...')
                 continue
             
             df[(ticker, 'close_price')] = close_price
@@ -237,6 +273,71 @@ class Portfolio:
                         portfolio_df.at[i, (ticker,'vwap')] = portfolio_df.at[i, (ticker,'vwap')] / split
 
         return portfolio_df
+
+    def _returns_df(self):
+        '''Create a cleaned df for returns calculations
+        '''
+        df = self.daily_holdings.copy()
+
+        for ticker in df.columns.levels[0]:
+            if ticker == 'cash':
+                continue
+
+            # Cashflow = end - initial cash per day
+            df[(ticker,'book_value_lag1')] = df[(ticker,'book_value')].shift(1).fillna(0)
+            df[(ticker,'cashflow')] = df[(ticker,'book_value')] - df[(ticker,'book_value_lag1')]
+            
+            # End value
+            # If its a new trade, use book_value. Otherwise, use market_value
+            df[(ticker,'vol_lag1')] = df[(ticker,'vol')].shift(1).fillna(0)
+            df[(ticker,'end_value')] = np.where(df[(ticker,'vol_lag1')] != df[(ticker,'vol')],
+                                                df[(ticker,'book_value')],
+                                                df[(ticker,'market_value')]
+                                               )
+            df[(ticker,'start_value')] = df[(ticker,'end_value')].shift(1).fillna(0, limit = 1)
+            df[(ticker,'start_value')] = df[(ticker,'start_value')].fillna(method='ffill')
+            
+            # daily return (%))
+            # end - (initial + cash), assuming cash > 0
+            df[(ticker,'daily_return')] = ((df[(ticker,'end_value')] -
+                                            (df[(ticker,'start_value')] + df[(ticker,'cashflow')])
+                                           )
+                                           /
+                                           (df[(ticker,'start_value')] + df[(ticker,'cashflow')])
+                                          )
+            # Catch any complete sales; daily returns (-100%) changed to NaN
+            df[(ticker,'daily_return')] = np.where(df[(ticker,'daily_return')] == -1,
+                                                np.nan,
+                                                df[(ticker,'daily_return')]
+                                               )
+            # Catch any new purchases - cashflow == end_value; daily returns (0%) changed to NaN
+            df[(ticker,'daily_return')] = np.where(df[(ticker,'end_value')] == df[(ticker,'cashflow')],
+                                                np.nan,
+                                                df[(ticker,'daily_return')]
+                                               )
+        
+        df[('portfolio', 'end_value')] = df.xs('end_value', level='Props', axis=1).sum(axis=1, min_count=1)
+        df[('portfolio', 'start_value')] = df.xs('start_value', level='Props', axis=1).sum(axis=1, min_count=1)
+        df[('portfolio', 'cashflow')] = df.xs('cashflow', level='Props', axis=1).sum(axis=1, min_count=1)
+        df[('portfolio','daily_return')] = ((df[('portfolio','end_value')] -
+                                (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
+                                )
+                                /
+                                (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
+                                )
+
+        columns_to_drop = [
+            'book_value_lag1',
+            'vol_lag1',
+            'book_value',
+            'market_value',
+            'close_price',
+            'vol',
+            'vwap',
+        ]
+        df = df.drop(columns_to_drop, axis=1, level=1)
+        df = self._sort_df(df)
+        return df
 
     def _add_scrip_remove_div(self, portfolio_df):
         # Read csv of scrip receives - this is manually maintained
