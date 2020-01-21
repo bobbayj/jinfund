@@ -20,7 +20,7 @@ class Portfolio:
         # Dates and file paths
         self.today = datetime.today().date()
         self.save_dir = Path(__file__).parents[1] / 'data'
-        self.check_date = datehandler.date_list(self.today-timedelta(5), self.today)[0]
+        self.check_date = datehandler.date_list(self.today-timedelta(5), self.today)[-1]
         self.portfolio_csv_name = f'portfolio_{self.check_date}.csv'
         self.portfolio_csv_path = self.save_dir / self.portfolio_csv_name
         
@@ -74,9 +74,9 @@ class Portfolio:
             [type] -- [description]
         '''        
         if start_date is None:
-            start_date = self.portfolio_dates[-1]
+            start_date = self.portfolio_dates[0]
         if end_date is None:
-            end_date = self.portfolio_dates[0]
+            end_date = self.portfolio_dates[-1]
         start_date = datehandler.to_iso(start_date)
         end_date = datehandler.to_iso(end_date)
         
@@ -116,7 +116,7 @@ class Portfolio:
             mask = (self.daily_holdings.index >= start_date) & (self.daily_holdings.index <= end_date)
         else:
             if start_date not in self.portfolio_dates:
-                start_date = self.portfolio_dates[0]
+                start_date = self.portfolio_dates[-1]
             mask = start_date
         return self.daily_holdings.loc[mask]
 
@@ -154,13 +154,16 @@ class Portfolio:
             
             df[(ticker, 'close_price')] = close_price
 
+            # Forward fill any np.nan close_price values -- due trading halt or otherwise
+            df[(ticker,'close_price')] = df[(ticker,'close_price')].fillna(method='ffill')
+
         return df
 
     def _build_df_from_txs(self):
         '''Builds daily portfolio holdings from broker transactions data
         
         Returns:
-            DataFrame -- index = datetime.date | columns = tickers | values = {'vol', 'vwap'}
+            MultiIndex DataFrame -- Level 0 = Ticker, Level 1 = vol, vwap, trade details
         '''
         trade_dates = self.df_txs.index.to_list()
         trade_tickers = self.df_txs.Ticker.to_list()
@@ -176,7 +179,7 @@ class Portfolio:
 
         trade_date = trade_dates.pop()
 
-        for portfolio_date in sorted(self.portfolio_dates, reverse=False):
+        for portfolio_date in sorted(self.portfolio_dates):
             while trade_date == portfolio_date:
                 trade_ticker = trade_tickers.pop()
                 trade_type = trade_types.pop()
@@ -211,7 +214,7 @@ class Portfolio:
                     break
             portfolio_holdings[portfolio_date] = copy.deepcopy(holdings)  # To preserve the mutability of each daily holding
 
-        # Multilevel dataframe makes it easier to edit
+        # Multilevel dataframe makes it easier to access
         reform = {
             (level1_key, level2_key, level3_key): values
             for level1_key, level2_dict in portfolio_holdings.items()
@@ -288,12 +291,18 @@ class Portfolio:
             df[(ticker,'cashflow')] = df[(ticker,'book_value')] - df[(ticker,'book_value_lag1')]
             
             # End value
-            # If its a new trade, use book_value. Otherwise, use market_value
+            # If its a new buy, use book_value. Otherwise, use market_value
             df[(ticker,'vol_lag1')] = df[(ticker,'vol')].shift(1).fillna(0)
-            df[(ticker,'end_value')] = np.where(df[(ticker,'vol_lag1')] != df[(ticker,'vol')],
+            df[(ticker,'end_value')] = np.where(df[(ticker,'vol_lag1')] == 0,
                                                 df[(ticker,'book_value')],
                                                 df[(ticker,'market_value')]
                                                )
+            # If it is an additional buy, add cash_flow to market_value. Otherwise, end_value
+            df[(ticker,'end_value')] = np.where(df[(ticker,'vol')] > df[(ticker,'vol_lag1')],
+                                                df[(ticker,'end_value')] + df[(ticker,'cashflow')],
+                                                df[(ticker,'end_value')]
+                                               )
+
             df[(ticker,'start_value')] = df[(ticker,'end_value')].shift(1).fillna(0, limit = 1)
             df[(ticker,'start_value')] = df[(ticker,'start_value')].fillna(method='ffill')
             
@@ -310,28 +319,28 @@ class Portfolio:
                                                 np.nan,
                                                 df[(ticker,'daily_return')]
                                                )
-            # Catch any new purchases - cashflow == end_value; daily returns (0%) changed to NaN
-            df[(ticker,'daily_return')] = np.where(df[(ticker,'end_value')] == df[(ticker,'cashflow')],
-                                                np.nan,
-                                                df[(ticker,'daily_return')]
-                                               )
+            # # Catch any new purchases - cashflow == end_value; daily returns (0%) changed to NaN
+            # df[(ticker,'daily_return')] = np.where(df[(ticker,'end_value')] == df[(ticker,'cashflow')],
+            #                                     np.nan,
+            #                                     df[(ticker,'daily_return')]
+            #                                    )
         
         df[('portfolio', 'end_value')] = df.xs('end_value', level='Props', axis=1).sum(axis=1, min_count=1)
         df[('portfolio', 'start_value')] = df.xs('start_value', level='Props', axis=1).sum(axis=1, min_count=1)
         df[('portfolio', 'cashflow')] = df.xs('cashflow', level='Props', axis=1).sum(axis=1, min_count=1)
         df[('portfolio','daily_return')] = ((df[('portfolio','end_value')] -
-                                (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
-                                )
-                                /
-                                (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
-                                )
+                                             (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
+                                            )
+                                            /
+                                            (df[('portfolio','start_value')]+df[('portfolio','cashflow')])
+                                           )
 
         columns_to_drop = [
             'book_value_lag1',
             'vol_lag1',
-            'book_value',
-            'market_value',
-            'close_price',
+            # 'book_value',
+            # 'market_value',
+            # 'close_price',
             'vol',
             'vwap',
         ]

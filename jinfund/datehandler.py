@@ -8,7 +8,7 @@ def to_iso(date):
         date = pd.to_datetime(date, dayfirst=True)
     return date
 
-def date_list(start_date, end_date, only_weekdays=True, ascending=False):
+def date_list(start_date, end_date, only_weekdays=True):
     '''Create a datetime list of all dates between two given periods in descending order
     
     Keyword Arguments:
@@ -31,8 +31,5 @@ def date_list(start_date, end_date, only_weekdays=True, ascending=False):
         if only_weekdays:
             if date.weekday() in range(5):
                 dates.append(date)
-
-    if not ascending:
-        dates = sorted(dates,reverse=True)
 
     return dates
