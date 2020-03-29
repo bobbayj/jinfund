@@ -53,16 +53,19 @@ class Trades:
         temp_df.columns = ['TradeType','Volume','Ticker','TradePrice']
         df = df.join(temp_df)
 
-        # Convert string dates to datetime.date
-        df.Date = pd.to_datetime(df.Date, dayfirst=True).dt.date
+        # Convert string dates to datetime via pandas
+        df.Date = pd.to_datetime(df.Date, dayfirst=True)
 
         # Change str to float
         df['Volume'] = pd.to_numeric(df['Volume'], downcast='float')
         df['TradePrice'] = pd.to_numeric(df['TradePrice'], downcast='float')
+        
+        # Assign negative signs to volume if trades are sells
+        df['Volume'] = np.where(df['TradeType']=='S', df['Volume']*-1,df['Volume'])
 
         # Calculate effective price inclusive of brokerage
         df['Debit($)'].fillna(df['Credit($)'], inplace=True)
-        df['EffectivePrice'] = df['Debit($)'] / df['Volume']
+        df['EffectivePrice'] = np.abs(df['Debit($)'] / df['Volume'])
 
         # Calculate brokerage
         df['Brokerage'] = df['Volume']*(df['EffectivePrice'] - df['TradePrice'])
@@ -72,9 +75,10 @@ class Trades:
         df['Market'] = 'ASX'
 
         # Clean df for export
-        cols = ['Date','Ticker','Market','TradeType','Volume','TradePrice','EffectivePrice','Brokerage']
+        cols = ['Date','Ticker','Market','Volume','TradePrice','EffectivePrice','Brokerage']
         df = df[cols]
-        df = df.set_index('Date')
+        df = df.set_index(['Date','Ticker'])
+        df = df.sort_index()
 
         return df
     
@@ -83,7 +87,8 @@ class Trades:
         '''
         Returns:
             Dataframe -- all transactions
-        '''        
+        '''
+
         return self.tx_df
     
     @property
@@ -115,4 +120,14 @@ class Trades:
         df['Type'] = np.where(self.tx_df.TradeType == 'B', -1, 1)
         df['Value'] = self.tx_df.Volume * self.tx_df.EffectivePrice * df.Type
         df = df.drop(columns = 'Type')
+        return df
+    
+    def by_ticker(self, ticker):
+        df = self.tx_df.xs(ticker,level=1,axis=0)
+
+        return df
+
+    def by_date(self,date):
+        df = self.tx_df.xs(date,level=0,axis=0)
+
         return df
