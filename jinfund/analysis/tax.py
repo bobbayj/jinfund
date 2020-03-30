@@ -60,25 +60,30 @@ class AutoCGT:
                 'EffectivePrice': txs['EffectivePrice'][i],
             }
             tx_vol = tx_dict['Volume']
-            cg = 0
+            tx_cg, tx_cg_taxable = 0, 0
 
             if tx_vol > 0:  # Buys in queue
                 buy_queue.append(tx_dict)
             else:  # Sells reduced by 
                 while tx_vol != 0:                                  # Loop until all the sold volume is accounted for
                     if tx_vol <= buy_queue[-1]['Volume']:           # Sell volume is less than or equal to previous buy volume
-                        cg += self.cg_calc(buy_queue[-1], tx_dict, partial='sell')
+                        cg, cg_taxable = self.cg_calc(buy_queue[-1], tx_dict, partial='sell')
+                        tx_cg += cg
+                        tx_cg_taxable += cg_taxable
                         buy_queue[-1]['Volume'] += tx_vol           # Reduce LIFO buy_volume by sale_volume (sale_volume is negative)
                         tx_vol = 0
                     else:                                           # Sell volume greater than previous buy volume
                         buy_parcel = buy_queue.pop()                # Remove buy_parcel from buy_queue as it has been depleted
-                        cg += self.cg_calc(buy_parcel, tx_dict, partial='buy')        
+                        cg, cg_taxable = self.cg_calc(buy_parcel, tx_dict, partial='buy')       
+                        tx_cg += cg
+                        tx_cg_taxable += cg_taxable
                         tx_vol += buy_parcel['Volume']              # Increase sale_volume by LIFO buy_volume (sale_volume is negative)
 
                 cgt_event = {  # Dict to store capital gain event
                     'Ticker': ticker,
                     'Date': date,
-                    'CapitalGain': cg,
+                    'CapitalGains': tx_cg,
+                    'CapitalGainsTaxable': tx_cg_taxable,
                     }
                 cgt_events.append(cgt_event)
         return pd.DataFrame(cgt_events)
@@ -102,9 +107,11 @@ class AutoCGT:
         sell_value = volume * sell_parcel['EffectivePrice']
 
         cg = sell_value - buy_value
-        if (sell_parcel['Date'] - buy_parcel['Date']).days > 365:
-            cg /= 2 # Apply any capital gains discounts if applicable
-        return cg
+        if ((sell_parcel['Date'] - buy_parcel['Date']).days > 365) and (cg > 0):
+            cg_taxable = cg / 2 # Apply any capital gains discounts if applicable
+        else:
+            cg_taxable = cg
+        return cg, cg_taxable
 
     def fy(self, yr_end = None, summary = True):
         '''Returns view of capital gains for the given financial year.
@@ -130,7 +137,9 @@ class AutoCGT:
         
         print(f'''
 Capital gains for \tFY{yr_start}-{yr_end}
-Total capital gains:\t ${fy_df['CapitalGain'].sum(): .2f}
+Total CG:\t\t ${fy_df['CapitalGains'].sum(): .2f}
+Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
+(Uses LIFO method)
         ''')
 
         return fy_df
