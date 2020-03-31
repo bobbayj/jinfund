@@ -57,7 +57,9 @@ class AutoCGT:
             tx_dict = {
                 'Date': date,
                 'Volume': txs['Volume'][i],
+                'TradePrice': txs['TradePrice'][i],
                 'EffectivePrice': txs['EffectivePrice'][i],
+                'Brokerage': txs['Brokerage'][i],
             }
             tx_vol = tx_dict['Volume']
             tx_cg, tx_cg_taxable = 0, 0
@@ -92,8 +94,8 @@ class AutoCGT:
         '''Calculates capital gains given buy and sell parcels, using the the buy or sell volume
         
         Arguments:
-            buy_parcel {dict} -- Requires keys: [Date, Volume, EffectivePrice]
-            sell_parcel {dict} -- Requires keys: [Date, Volume, EffectivePrice]
+            buy_parcel {dict} -- Requires keys: [Date, Volume, TradePrice, Brokerage]
+            sell_parcel {dict} -- Requires keys: [Date, Volume, TradePrice, Brokerage]
             partial {string} -- ['buy','sell']; Defines whether to use the buy or sell volume for the calculation
         Returns:
             float -- calculated capital gains
@@ -103,14 +105,15 @@ class AutoCGT:
         elif partial == 'buy':
             volume = buy_parcel['Volume']
 
-        buy_value = volume * buy_parcel['EffectivePrice']
-        sell_value = volume * sell_parcel['EffectivePrice']
+        buy_value = volume * buy_parcel['TradePrice']
+        sell_value = volume * sell_parcel['TradePrice']
 
         cg = sell_value - buy_value
         if ((sell_parcel['Date'] - buy_parcel['Date']).days > 365) and (cg > 0):
             cg_taxable = cg / 2 # Apply any capital gains discounts if applicable
         else:
             cg_taxable = cg
+        cg_taxable -= (buy_parcel['Brokerage'] + sell_parcel['Brokerage')  # Brokerage is tax deductible
         return cg, cg_taxable
 
     def fy(self, yr_end = None, summary = True):
