@@ -3,23 +3,28 @@ import pandas as pd
 from datetime import datetime
 
 # Local imports
-from portfolio.commsec import Trades
+from portfolio.commsec import Transactions, Dividends
 
-class AutoCGT:
+class AutoTax:
+    '''Automatically calculates capital gains tax over a specified period for one or all stocks using trade and scrip dividend data.
+    
+    Functions:
+        fy_view(yr_end = None, summary = True) -- Provides a snapshot of capital gains for period. Defaults to current FY
+    '''    
     def __init__(self):
-        t = Trades()
-        self.trade_df = t.all
-
-        self.df = self.build_from_trades()
+        t,d = Transactions(), Dividends()
+        self.tx_df = t.tx_df
+        self.d_df = d.all
+        self.df = self.build_from_transactions(self.tx_df)
     
 
-    def build_from_trades(self):    
+    def build_from_transactions(self,tx_df):    
         '''Constructs capital gains for all trades
         
         Returns:
             DataFrame -- of capital gains for all tickers. MultiIndex: (Date, Ticker), Column: [CapitalGain]
         '''        
-        tickers = list(sorted(set(self.trade_df.reset_index().Ticker.to_list())))
+        tickers = list(sorted(set(tx_df.reset_index().Ticker.to_list())))
         capital_gains = pd.DataFrame()  # Initalise empty df
 
         for ticker in tickers:
@@ -46,8 +51,7 @@ class AutoCGT:
         # LIFO tax logic...tends to minimise tax on average due to lower CG
         # LIFO = last-in, first-out. Most recently purchased  volume is the first to be sold
         
-
-        ticker_df = self.trade_df.xs(ticker,level=1,axis=0)
+        ticker_df = self.tx_df.xs(ticker,level=1,axis=0)
         dates = list(ticker_df.index)
         txs = ticker_df.to_dict('list')
         buy_queue = []
@@ -113,10 +117,11 @@ class AutoCGT:
             cg_taxable = cg / 2 # Apply any capital gains discounts if applicable
         else:
             cg_taxable = cg
-        cg_taxable -= (buy_parcel['Brokerage'] + sell_parcel['Brokerage')  # Brokerage is tax deductible
+        cg_taxable -= (buy_parcel['Brokerage'] + sell_parcel['Brokerage'])  # Brokerage is tax deductible
+        
         return cg, cg_taxable
 
-    def fy(self, yr_end = None, summary = True):
+    def fy_view(self, yr_end = None, summary = True):
         '''Returns view of capital gains for the given financial year.
         
         Keyword Arguments:
