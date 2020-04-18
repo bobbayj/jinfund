@@ -14,9 +14,10 @@ class AutoTax():
     def __init__(self, financial_year:int=2020):
         self.cgt_log = CGTLog()
         self.tx_df = Transactions().tx_df
-        self.df = self.build_from_transactions()
+        self.tickers = list(sorted(set(self.tx_df.reset_index().Ticker.to_list())))
         self.__finyear = financial_year
         self.__fystart = self.finyear - 1
+        self.df = self.build_from_transactions()
 
     @property
     def finyear(self):
@@ -43,10 +44,10 @@ class AutoTax():
         Returns:
             DataFrame -- of capital gains for all tickers. MultiIndex: (Date, Ticker), Column: [CapitalGain]
         '''        
-        tickers = list(sorted(set(self.tx_df.reset_index().Ticker.to_list())))
+        
         capital_gains = pd.DataFrame()  # Initalise empty df
 
-        for ticker in tickers:
+        for ticker in self.tickers:
             tick_cg_df = self.__ticker_cgt_events(ticker)
             if len(tick_cg_df) > 0:
                 capital_gains = tick_cg_df if len(capital_gains)==0 else pd.concat([capital_gains,tick_cg_df])
@@ -187,6 +188,26 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         fy_df = df.loc[f'{self.fystart}-07-01':f'{self.finyear}-06-30']
         fy_df.to_csv(f'FY{self.finyear}_cgt_report.csv')
         print('Saved to csv!')
+
+    def ticker_detail(self, ticker:str=None):
+        if ticker is None:
+            raise ValueError(f'No ticker selected. Select one of the following:\n {self.tickers}')
+        
+        df = pd.DataFrame(self.cgt_log.log).set_index('date')
+        temp = df.loc[df['ticker']==ticker][['buy_parcels','sell_parcel']].to_dict('series')
+
+        buys, sells = pd.DataFrame(), pd.DataFrame()
+        for buy, sell in zip(temp['buy_parcels'],temp['sell_parcel']):
+            sells = pd.concat([sells,pd.DataFrame([sell])],join='outer')
+            buys = pd.concat([buys,pd.DataFrame(buy)],join='outer')
+
+        sells['Type'] = 'Sells'
+        buys['Type'] = 'Buys'
+        combined_df = pd.concat([sells,buys]).set_index(['Type','Date'])
+
+        print(ticker)
+        return combined_df.sort_values(['Date','Volume'],ascending=[True,False])
+
 
 class CGTLog():
     def __init__(self):
