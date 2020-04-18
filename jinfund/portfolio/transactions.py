@@ -13,16 +13,21 @@ class Trades:
 
     Note that transactions only show on the T+2 date
     '''
-    def __init__(self):
-        csvfiles = sorted(list(dirname.glob('commsec*')))
+    def __init__(self,broker):
+        try:
+            csvfiles = sorted(list(dirname.glob(f'{broker}*')))
+        except:
+            return
         latest_csv = csvfiles[-1]
 
         t_df = pd.read_csv(latest_csv)
-        t_df = self.digest_trades(t_df)
 
-        self.t_df = t_df
+        if broker == 'commsec':
+            self.t_df = self.digest_commsec(t_df)
+        else:
+            self.t_df = pd.DataFrame()
 
-    def digest_trades(self, df):
+    def digest_commsec(self, df):
         """Digest raw transactions.csv dataframe
         
         EffectivePrice includes brokerage
@@ -88,7 +93,6 @@ class Trades:
         Returns:
             Dataframe -- all transactions
         '''
-
         return self.t_df
     
     @property
@@ -97,8 +101,7 @@ class Trades:
         Returns:
             Dataframe -- only buy transactions
         '''        
-        df = self.t_df[self.t_df.TradeType == 'B']
-        return df
+        return self.t_df[self.t_df.TradeType == 'B']
 
     @property
     def sells(self):
@@ -106,8 +109,7 @@ class Trades:
         Returns:
             Dataframe -- only sell transactions
         '''        
-        df = self.t_df[self.t_df.TradeType == 'S']
-        return df
+        return self.t_df[self.t_df.TradeType == 'S']
 
     @property
     def cashflow(self):
@@ -123,14 +125,10 @@ class Trades:
         return df
     
     def by_ticker(self, ticker):
-        df = self.t_df.xs(ticker,level=1,axis=0)
-
-        return df
+        return self.t_df.xs(ticker,level=1,axis=0)
 
     def by_date(self,date):
-        df = self.t_df.xs(date,level=0,axis=0)
-
-        return df
+        return self.t_df.xs(date,level=0,axis=0)
 
 
 class Dividends:
@@ -139,23 +137,28 @@ class Dividends:
         latest_csv = csvfiles[-1]
 
         d_df = pd.read_csv(latest_csv)
-        d_df['date'] = pd.to_datetime(d_df['date'])  # Convert dates to datetime, and set multiindex [date, ticker]
+        d_df['date'] = pd.to_datetime(d_df['date'],dayfirst=True)  # Convert dates to datetime, and set multiindex [date, ticker]
         self.d_df = d_df.set_index(['date','ticker']).sort_index()
     
     @property
     def all(self):
-        '''
-        Returns:
-            Dataframe -- all transactions
-        '''
         return self.d_df
 
 class Transactions:
+    brokers = ['commsec']
+
     def __init__(self):
-        t, d = Trades(), Dividends()
-        self.t_df, self.d_df = t.all, d.all
+        self.t_df = self.collate_broker_trades()
+        self.d_df = Dividends().all
 
         self.tx_df = self.combine_trades_divs()
+
+    def collate_broker_trades(self):
+        df = pd.DataFrame()
+        for broker in Transactions.brokers:
+            t = Trades(broker)
+            df = df.append(t.all)
+        return df.sort_index()
 
     def combine_trades_divs(self):
         df = self.d_df
@@ -171,3 +174,7 @@ class Transactions:
         temp_df['Scrip'] = 1
 
         return pd.concat([self.t_df,temp_df],axis=0, join='outer').sort_index()  # Combine the dataframes together and return
+
+    @property
+    def cash_dividends(self):
+        return self.d_df[self.d_df['cash']>0]['cash']
