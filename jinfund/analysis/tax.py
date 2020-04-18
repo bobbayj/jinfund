@@ -88,14 +88,14 @@ class AutoTax():
                 buy_logs = []                                       # Flush buy logs
                 while tx_vol != 0:                                  # Loop until all the sold volume is accounted for
                     if abs(tx_vol) <= buy_queue[-1]['Volume']:      # Sell volume is less than or equal to previous buy volume
-                        buy_log = buy_queue[-1].copy()              # For logging - initial shares in buy_parcel
                         cg, cg_taxable, buy_queue[-1] = self.cg_calc(buy_queue[-1], tx_dict, limiter='sell')
+                        buy_log = buy_queue[-1].copy()              # For logging - initial shares in buy_parcel
                         buy_queue[-1]['Volume'] += tx_vol           # Reduce LIFO buy_volume by sale_volume (sale_volume is negative)
                         tx_vol = 0
                     else:                                           # Sell volume greater than previous buy volume
                         buy_parcel = buy_queue.pop()                # Remove buy_parcel from buy_queue as it has been depleted
-                        buy_log = buy_parcel.copy()                 # For logging - remaining shares in buy_parcel
                         cg, cg_taxable, buy_parcel = self.cg_calc(buy_parcel, tx_dict, limiter='buy')
+                        buy_log = buy_parcel.copy()                 # For logging - remaining shares in buy_parcel
                         tx_vol += buy_parcel['Volume']              # Increase sale_volume by LIFO buy_volume (sale_volume is negative)
                     tx_cg += cg
                     tx_cg_taxable += cg_taxable
@@ -139,8 +139,11 @@ class AutoTax():
         else:  # More sell volume than buy volume
             volume = abs(sell_parcel['Volume'])
         
-        buy_brokerage = buy_parcel['Brokerage'] * (volume/buy_parcel['Volume'])  # Pro-rate buy brokerage as less is sold from this parcel
-        buy_parcel['Brokerage'] -= buy_brokerage  # Reduce brokerage by amount pro-rated to this transaction
+        # Brokerage pro-rata calculation
+        pr_factor = volume/buy_parcel['Volume'] if volume/buy_parcel['Volume'] < 1 else 1
+        buy_brokerage = buy_parcel['Brokerage'] * pr_factor  # Pro-rate buy brokerage as less is sold from this parcel
+        buy_parcel['Pro-rate_brokerage'] = buy_brokerage  # Pro-rated amount of brokerage for this transaction
+        buy_parcel['Brokerage'] -= buy_brokerage  # Remaining brokerage for buy_parcel
 
         buy_value = volume * buy_parcel['TradePrice']
         sell_value = volume * sell_parcel['TradePrice']
