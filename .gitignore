@@ -3,4 +3,5 @@
 *.xlsx
 *.sql
 *.ipynb*
-*cache*
+/_pycache/**
+!sample/**
