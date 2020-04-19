@@ -4,3 +4,4 @@
 hidden*
 *.ipynb
 *cache*
+*.pptx*
