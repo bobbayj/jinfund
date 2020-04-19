@@ -28,8 +28,8 @@ Run `app.exe` to open the GUI.
   - The file will be copied to `jinfund/data` and renamed to `{broker_name}.csv`. E.g. Transactions exported from commsec will be renamed `commsec.csv`
   - If your broker is not in the drop-down list, contact and provide me a sample csv file so I can support the broker
 - You will also need manually update the dividends
-  - Click "Update Dividends" to open `div.csv` and make edits
-  - Remember to save and close the file before using this tool any further
+  - Dividends need to be in a specific order
+  - See `data/samples/div.csv` for the required structure. **Franking details are optional**
 - Click `Generate CGT Report` to generate a `.csv` summary of the capital gains and capital gains taxable
 - Click `Export CGT Details` to generate a detailed `.csv` report of all capital gains events and their associated transactions
 - Click `Change Output Path` to change the output destination.
