@@ -1,6 +1,0 @@
-README.md
-setup.py
-jinfund.egg-info/PKG-INFO
-jinfund.egg-info/SOURCES.txt
-jinfund.egg-info/dependency_links.txt
-jinfund.egg-info/top_level.txt

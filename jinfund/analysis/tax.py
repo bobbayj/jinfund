@@ -238,8 +238,6 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         df.to_csv(fpath)
         print(f'Saved to csv!\n\tFilename:\t{fname}\n\tOutput path:\t{self.output_path}')
 
-
-
 class CGTLog():
     def __init__(self):
         self.log = []
