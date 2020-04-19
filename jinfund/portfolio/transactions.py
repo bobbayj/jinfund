@@ -130,7 +130,6 @@ class Trades:
     def by_date(self,date):
         return self.t_df.xs(date,level=0,axis=0)
 
-
 class Dividends:
     def __init__(self):
         csvfiles = sorted(list(dirname.glob('divs*')))

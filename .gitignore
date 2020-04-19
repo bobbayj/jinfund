@@ -2,3 +2,4 @@
 *.xlsx
 *.sql
 hidden*
+*.ipynb
