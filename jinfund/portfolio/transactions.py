@@ -144,22 +144,29 @@ class Dividends:
         return self.d_df
 
 class Transactions:
+    '''Combines trades from brokers and manually-inputted dividends into one pd.DataFrame.
+    Currently only supports Commsec trades
+    
+    Returns:
+        pd.DataFrame -- Columns: Ticker | Market | TradePrice | EffectivePrice | Brokerage | Scrip
+    '''
+
     brokers = ['commsec']
 
     def __init__(self):
-        self.t_df = self.collate_broker_trades()
+        self.t_df = self.__collate_broker_trades()
         self.d_df = Dividends().all
 
-        self.tx_df = self.combine_trades_divs()
+        self.tx_df = self.__combine_trades_divs()
 
-    def collate_broker_trades(self):
+    def __collate_broker_trades(self):
         df = pd.DataFrame()
         for broker in Transactions.brokers:
             t = Trades(broker)
             df = df.append(t.all)
         return df.sort_index()
 
-    def combine_trades_divs(self):
+    def __combine_trades_divs(self):
         df = self.d_df
         # Get scrip dividends only
         temp_df = df[df['scrip_vol'].isna()==False]

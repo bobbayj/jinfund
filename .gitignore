@@ -4,4 +4,6 @@
 *.sql
 *.ipynb*
 /_pycache/**
-!sample/**
+
+# Whitelist
+!/jinfund/data/samples/**

@@ -1,0 +1,4 @@
+date,ticker,scrip_vol,scrip_price,cash,franked_amount,unfranked_amount,franking_credit,withholding_tax
+31/03/2020,CBA,,,204,204,,87.42857143,
+26/09/2019,CBA,,,235.62,235.62,,100.98,
+28/03/2019,CBA,2,73.21,,200,,85.71428571,
