@@ -1,5 +1,6 @@
 # Standard imports
 import pandas as pd
+from pathlib import Path
 from datetime import datetime
 
 # Local imports
@@ -11,6 +12,8 @@ class AutoTax():
     Functions:
         fy_view(yr_end = None, summary = True) -- Provides a snapshot of capital gains for period. Defaults to current FY
     '''
+    output_path = Path.cwd()/('output')
+
     def __init__(self, financial_year:int=2020):
         self.cgt_log = CGTLog()
         self.tx_df = Transactions().tx_df
@@ -180,21 +183,42 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         ''')
         return fy_df
 
-    def report(self):
+    def cgt_report(self, to_csv:bool=True):
         '''Creates a .csv report of all capital gains events for the given year and the parcels involved
         '''
         df = pd.DataFrame(self.cgt_log.log).set_index('date')  # Dependent on how the data is logged in AutoTax!
         df['buys_associated'] = df.apply(lambda x: len(x['buy_parcels']), axis=1)
         fy_df = df.loc[f'{self.fystart}-07-01':f'{self.finyear}-06-30']
-        fy_df.to_csv(f'FY{self.finyear}_cgt_report.csv')
-        print('Saved to csv!')
-
-    def ticker_detail(self, ticker:str=None):
-        if ticker is None:
-            raise ValueError(f'No ticker selected. Select one of the following:\n {self.tickers}')
         
+        fname = f'FY{self.finyear}_cgt_report.csv'
+        if to_csv: self.__export_df_to_csv(fy_df,fname)
+
+        return fy_df
+
+    def cgt_details(self, ticker:str=None, show_all:bool=True, to_csv:bool=True):
+        
+        combined_df = pd.DataFrame()
+
+        if show_all:  # Combine all ticker_dfs
+            for ticker in self.tickers:
+                ticker_df = self.__ticker_detail(ticker=ticker)
+                combined_df = pd.concat([combined_df, ticker_df])
+            fname = 'cgt_details_all.csv'
+        elif ticker is None:
+            raise ValueError(f'No ticker selected. Set <show_all> to True\n or set <ticker> to one of the following:\n{self.tickers}')
+        else:
+            combined_df = self.__ticker_detail(ticker=ticker)
+            fname = f'cgt_details_{ticker}.csv'
+
+        if to_csv: self.__export_df_to_csv(combined_df,fname)
+
+        return combined_df
+    
+    def __ticker_detail(self, ticker:str=None):
         df = pd.DataFrame(self.cgt_log.log).set_index('date')
         temp = df.loc[df['ticker']==ticker][['buy_parcels','sell_parcel']].to_dict('series')
+        if len(temp['sell_parcel']) == 0:
+            return pd.DataFrame()  # Return empty dataframe
 
         buys, sells = pd.DataFrame(), pd.DataFrame()
         for buy, sell in zip(temp['buy_parcels'],temp['sell_parcel']):
@@ -203,10 +227,17 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
 
         sells['Type'] = 'Sells'
         buys['Type'] = 'Buys'
-        combined_df = pd.concat([sells,buys]).set_index(['Type','Date'])
+        ticker_df = pd.concat([sells,buys])
+        ticker_df['Ticker'] = ticker
+        ticker_df = ticker_df.set_index(['Ticker','Type','Date'])
 
-        print(ticker)
-        return combined_df.sort_values(['Date','Volume'],ascending=[True,False])
+        return ticker_df.sort_values(['Date','Volume'],ascending=[True,False])
+    
+    def __export_df_to_csv(self, df:pd.core.frame.DataFrame, fname:str):
+        fpath = self.output_path / fname
+        df.to_csv(fpath)
+        print(f'Saved to csv!\n\tFilename:\t{fname}\n\tOutput path:\t{self.output_path}')
+
 
 
 class CGTLog():
