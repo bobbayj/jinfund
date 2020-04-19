@@ -1,5 +1,6 @@
 # Standard imports
 from pathlib import Path
+import shutil
 
 # Third-party imports
 import kivy
@@ -22,15 +23,20 @@ DATA_PATH = Path.cwd() / 'data'
 class MainGrid(GridLayout):
     def __init__(self, **kwargs):
         super(MainGrid, self).__init__(**kwargs)
+        # Data
+        self.fpaths = []
+        self.brokers = []
+
+        # Layout
         self.padding = 20
         self.cols = 1
-        self.row_force_default=True
-        self.row_default_height=100
-    
+
         self.file_1 = FileGrid(broker=True)
         self.file_2 = FileGrid(broker=True)
         self.file_3 = FileGrid(broker=False)
-        self.submit = self._update_data()
+        
+        submit_btn = Button(text='Load .csv files')
+        submit_btn.bind(on_release=self._update_data)
 
         self.add_widget(self.file_1)
         self.add_widget(RowSpacer())
@@ -38,29 +44,27 @@ class MainGrid(GridLayout):
         self.add_widget(RowSpacer())
         self.add_widget(self.file_3)
         self.add_widget(RowSpacer())
-        # self.add_widget(self.submit)
+        self.add_widget(submit_btn)
 
-    def _update_data(self):
-        files = [self.file_1.fpath, self.file_2.fpath, self.file_3.fpath]
+    def _update_data(self, instance):
+        self.fpaths = [self.file_1.fpath, self.file_2.fpath, self.file_3.fpath]  # Can we make these programmatic?
+        self.brokers = [self.file_1.broker_name, self.file_2.broker_name]  # Can we make these programmatic?
 
-        for f in files:
-            if len(f) > 0:
-                pass
+        for f in DATA_PATH.iterdir():  # Clear directory
+            if f.stem != 'samples': f.unlink()
 
-
-        return
-
-    def _copy_file(self,fpath):
-        print(DATA_PATH)
-
-
-
+        for fpath in self.fpaths:
+            if len(fpath) > 0:
+                shutil.copy(fpath, DATA_PATH)
+    
 class FileGrid(GridLayout):
     def __init__(self, broker:bool, **kwargs):
         super(FileGrid, self).__init__(**kwargs)
         self.cols = 3
         self.fpath = ''
         self.broker_name = ''
+        self.row_force_default=True
+        self.row_default_height=100
         
         if broker:
             self.instruction = 'Broker Trade Filepath: '
@@ -84,7 +88,6 @@ class FileGrid(GridLayout):
         self.fpath_lbl = Label(text='No file selected', padding_x=10)
         self.label_layout.add_widget(Label(text=self.instruction, size_hint_y = .5))
         self.label_layout.add_widget(self.fpath_lbl)
-        print(type(self.fpath_lbl))
 
         self.csv_btn = Button(text='Select .csv')
         self.csv_btn.bind(on_release=self._set_path)
@@ -105,14 +108,13 @@ class FileGrid(GridLayout):
 
     def _update_broker_name(self, name):
         self.broker_name = name
-        print(self.broker_name)
 
 class RowSpacer(GridLayout):
     def __init__(self, **kwargs):
         super(RowSpacer, self).__init__(**kwargs)
         self.cols = 1
         self.row_force_default=True
-        self.row_default_height=25
+        self.row_default_height=10
 
         self.add_widget(Label())
 
