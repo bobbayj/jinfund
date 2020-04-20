@@ -1,6 +1,7 @@
 # Standard imports
 from pathlib import Path
 import shutil
+from datetime import datetime
 
 # Third-party imports
 import kivy
@@ -9,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.dropdown import DropDown
 from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle
 
 import tkinter as tk
@@ -33,12 +35,52 @@ class MainGrid(GridLayout):
 class ReportingGrid(GridLayout):
     def __init__(self, **kwargs):
         super(ReportingGrid, self).__init__(**kwargs)
+        # Data
+        self.fy = 2020
 
         # Layout
-        # CGT Report button
+        self.padding = 10
+        self.cols = 1
+
+        self.inside = GridLayout()
+        self.inside.cols = 2
+        self.fy_input = TextInput(text=str(self.fy), multiline=False, size_hint=(0.5,None), height=60)  # Enter FY
+        self.fy_input.bind(on_text_validate=self._update_fy)
+        self.inside.add_widget(WrappedLabel(text='Enter the financial year for your report (YYYY): (Hit "Enter" to confirm)'))
+        self.inside.add_widget(self.fy_input)
+
+        self.cgt_report_btn = Button(text='Generate CGT Report', size_hint_y=None, height=60)  # Generate CGT Report button
+        self.cgt_report_btn.bind(on_release=self._get_cgt_report)
         # Label to say exported + time
-        # Export CGT Details button
+
+        self.cgt_details_btn = Button(text='Export CGT Details',size_hint_y=None, height=60)  # Export CGT Details button
+        self.cgt_details_btn.bind(on_release=self._get_cgt_details)
         # Label to say exported + time
+
+        self.add_widget(RowSpacer())
+        self.add_widget(RowSpacer())
+        self.add_widget(self.inside)
+        self.add_widget(RowSpacer())
+        self.add_widget(self.cgt_report_btn)
+        self.add_widget(self.cgt_details_btn)
+    
+    def _get_cgt_report(self, instance):
+        tax = AutoTax(financial_year=self.fy)
+        tax.cgt_report()
+
+    def _get_cgt_details(self, instance):
+        tax = AutoTax(financial_year=self.fy)
+        tax.cgt_details()
+    
+    def _update_fy(self, instance):
+        try: fy = int(instance.text)
+        except:
+            instance.text = 'Must be numeric!'
+            return
+        
+        if fy < 2015: instance.text = 'Must be 2015 or later' ; return
+        if fy > datetime.today().year + 1: instance.text = 'Must be before current/next FY' ; return
+        self.fy = fy
 
 class SettingsGrid(GridLayout):
     def __init__(self, **kwargs):
@@ -92,7 +134,6 @@ class FileGrid(GridLayout):
 
         # Layout
         self.cols = 3
-        # self.row_force_default=True
         self.row_default_height=60
         
         if select_type == 'output_path':
@@ -110,8 +151,8 @@ class FileGrid(GridLayout):
         self.label_layout = GridLayout()
         self.label_layout.cols = 1
         
-        self.fpath_lbl = WrappedLabel(text=self.fpath_lbl_txt, padding_x=10)
-        self.label_layout.add_widget(Label(text=self.instruction, size_hint_y = .5))
+        self.fpath_lbl = WrappedLabel(text=self.fpath_lbl_txt)
+        self.label_layout.add_widget(WrappedLabel(text=self.instruction, size_hint_y = .5))
         self.label_layout.add_widget(self.fpath_lbl)
 
         self.file_btn = Button(text=self.file_btn_txt)
@@ -119,8 +160,6 @@ class FileGrid(GridLayout):
         
         self.add_widget(self.label_layout)
         self.add_widget(self.file_btn)
-
-        # self._wrap_text(self.fpath_lbl)
 
     def _add_broker_dropdown(self):
         self.instruction = 'Broker Trade Filepath: '
@@ -140,12 +179,6 @@ class FileGrid(GridLayout):
         root.withdraw()
         self.fpath = filedialog.askopenfilename()
         self.fpath_lbl.text = self.fpath
-        # self._wrap_text(self.fpath_lbl)
-    
-    # def _wrap_text(self, instance):
-    #     instance.text_size = (instance.width, None)
-    #     instance.height = instance.texture_size[1]
-    #     print(instance.text_size, instance.height)
 
     def _update_broker_name(self, name):
         self.broker_name = name
@@ -153,26 +186,22 @@ class FileGrid(GridLayout):
 class RowSpacer(GridLayout):
     def __init__(self, **kwargs):
         super(RowSpacer, self).__init__(**kwargs)
-        self.cols = 1
-        self.row_force_default=True
-        self.row_default_height=10
-
-        # self.add_widget(Label())
 
 class WrappedLabel(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.padding = (10,10)
         self.bind(
             width=lambda *x:
             self.setter('text_size')(self, (self.width, None)),
             texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
 
 class TaxJinie(App):
+    def __init__(self):
+        self.build()
+
     def build(self):
         return MainGrid()
-
-
-
     
 if __name__ == "__main__":
     TaxJinie().run()

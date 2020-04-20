@@ -3,7 +3,10 @@
 *.xlsx
 *.sql
 *.ipynb*
-/_pycache/**
+
+# Dirs
+__pycache__
+TaxJinie
 
 # Whitelist
 !/jinfund/data/samples/**
