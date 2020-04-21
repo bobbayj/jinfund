@@ -95,13 +95,13 @@ class AutoTax():
                         buy_parcel = buy_queue.pop()
                         continue
                     elif abs(tx_vol) < buy_queue[-1]['Volume']:     # Sell volume is less than or equal to previous buy volume
-                        cg, cg_taxable, buy_queue[-1] = self.__cg_calc(buy_queue[-1], tx_dict, limiter='sell')
+                        cg, cg_taxable = self.__cg_calc(buy_queue[-1], tx_dict, limiter='sell')
                         buy_log = buy_queue[-1].copy()              # For logging - initial shares in buy_parcel
                         buy_queue[-1]['Volume'] += tx_vol           # Reduce LIFO buy_volume by sale_volume (sale_volume is negative)
                         tx_vol = 0
                     else:                                           # Sell volume greater than previous buy volume
                         buy_parcel = buy_queue.pop()                # Remove buy_parcel from buy_queue as it has been depleted
-                        cg, cg_taxable, buy_parcel = self.__cg_calc(buy_parcel, tx_dict, limiter='buy')
+                        cg, cg_taxable = self.__cg_calc(buy_parcel, tx_dict, limiter='buy')
                         buy_log = buy_parcel.copy()                 # For logging - remaining shares in buy_parcel
                         tx_vol += buy_parcel['Volume']              # Increase sale_volume by LIFO buy_volume (sale_volume is negative)
                     tx_cg += cg
@@ -114,7 +114,7 @@ class AutoTax():
                     'volume': txs['Volume'][i],
                     'cg': tx_cg,
                     'cgt': tx_cg_taxable,
-                    'buy_parcels': buy_logs,                        # Note: brokerage value is pre-CGT event pro-rating and deduction
+                    'buy_parcels': buy_logs,
                     'sell_parcel': tx_dict,
                 }
                 self.cgt_log.record(cgt_detailed_log)
@@ -145,24 +145,17 @@ class AutoTax():
             volume = buy_parcel['Volume']
         else:  # More sell volume than buy volume
             volume = abs(sell_parcel['Volume'])
-        
-        # Brokerage pro-rata calculation
-        pr_factor = volume/buy_parcel['Volume'] if volume/buy_parcel['Volume'] < 1 else 1
-        buy_brokerage = buy_parcel['Brokerage'] * pr_factor  # Pro-rate buy brokerage as less is sold from this parcel
-        buy_parcel['Pro-rate_brokerage'] = buy_brokerage  # Pro-rated amount of brokerage for this transaction
-        buy_parcel['Brokerage'] -= buy_brokerage  # Remaining brokerage for buy_parcel
 
-        buy_value = volume * buy_parcel['TradePrice']
-        sell_value = volume * sell_parcel['TradePrice']
+        buy_value = volume * buy_parcel['EffectivePrice']  # EffectivePrice incldues brokerage
+        sell_value = volume * sell_parcel['EffectivePrice']  # EffectivePrice incldues brokerage
 
         cg = sell_value - buy_value
         if ((sell_parcel['Date'] - buy_parcel['Date']).days > 365) and (cg > 0):
             cg_taxable = cg / 2 # Apply any capital gains discounts if applicable
         else:
             cg_taxable = cg
-        cg_taxable -= (buy_brokerage + sell_parcel['Brokerage'])  # Brokerage is tax deductible
         
-        return cg, cg_taxable, buy_parcel
+        return cg, cg_taxable
 
     def fy_view(self, summary = True):
         '''Returns view of capital gains for the given financial year.
@@ -205,8 +198,8 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         if show_all:  # Combine all ticker_dfs
             for ticker in self.tickers:
                 ticker_df = self.__ticker_detail(ticker=ticker)
-                combined_df = pd.concat([combined_df, ticker_df])
-            fname = 'cgt_details_all.csv'
+                combined_df = pd.concat([combined_df, ticker_df], join='outer')
+            fname = f'cgt_details_all.csv'
         elif ticker is None:
             raise ValueError(f'No ticker selected. Set <show_all> to True\n or set <ticker> to one of the following:\n{self.tickers}')
         else:
@@ -214,6 +207,8 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
             fname = f'cgt_details_{ticker}.csv'
         
         fy_df = combined_df.loc[f'{self.fystart}-07-01':f'{self.finyear}-06-30']
+        fy_df = fy_df.reset_index().set_index(['Ticker','Type','Date'])
+
         if to_csv: self.__export_df_to_csv(fy_df,fname)
 
         return fy_df
@@ -233,11 +228,10 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         buys['Type'] = 'Buys'
         ticker_df = pd.concat([sells,buys])
         ticker_df['Ticker'] = ticker
-        ticker_df = ticker_df.set_index(['Ticker','Type','Date'])
 
-        return ticker_df.sort_values(['Date','Volume'],ascending=[True,False])
+        return ticker_df.set_index(['Date']).sort_values(['Date','Volume'],ascending=[True,False])
     
-    def __export_df_to_csv(self, df:pd.core.frame.DataFrame, fname:str):
+    def __export_df_to_csv(self, df, fname:str):
         fpath = self.output_path / fname
         df.to_csv(fpath)
         print(f'Saved to csv!\n\tFilename:\t{fname}\n\tOutput path:\t{self.output_path}')
