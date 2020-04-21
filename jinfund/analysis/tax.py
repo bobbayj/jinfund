@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Local imports
-from portfolio.transactions import Transactions
+from ..portfolio.transactions import Transactions
 
 class AutoTax():
     '''Automatically calculates capital gains tax over a specified period for one or all stocks using trade and scrip dividend data.
@@ -91,7 +91,10 @@ class AutoTax():
             else:  # Sells reduced by
                 buy_logs = []                                       # Flush buy logs
                 while tx_vol != 0:                                  # Loop until all the sold volume is accounted for
-                    if abs(tx_vol) <= buy_queue[-1]['Volume']:      # Sell volume is less than or equal to previous buy volume
+                    if buy_queue[-1]['Volume'] == 0:                # Catch any 0 volume buy parcels
+                        buy_parcel = buy_queue.pop()
+                        continue
+                    elif abs(tx_vol) < buy_queue[-1]['Volume']:     # Sell volume is less than or equal to previous buy volume
                         cg, cg_taxable, buy_queue[-1] = self.__cg_calc(buy_queue[-1], tx_dict, limiter='sell')
                         buy_log = buy_queue[-1].copy()              # For logging - initial shares in buy_parcel
                         buy_queue[-1]['Volume'] += tx_vol           # Reduce LIFO buy_volume by sale_volume (sale_volume is negative)
@@ -134,7 +137,7 @@ class AutoTax():
             limiter {string} -- ['buy','sell']; Defines the buy or sell volume as the limiting volume for the calculation
         Returns:
             float -- calculated capital gains
-        '''        
+        '''
         limiter_options = ['buy','sell']
         if limiter not in limiter_options:
             raise ValueError(f'Invalid partial type. Expected one of: {limiter_options}')
