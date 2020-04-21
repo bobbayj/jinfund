@@ -206,8 +206,10 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
             combined_df = self.__ticker_detail(ticker=ticker)
             fname = f'cgt_details_{ticker}.csv'
         
-        fy_df = combined_df.loc[f'{self.fystart}-07-01':f'{self.finyear}-06-30']
-        fy_df = fy_df.reset_index().set_index(['Ticker','Type','Date'])
+        # fy_df = combined_df.loc[f'{self.fystart}-07-01':f'{self.finyear}-06-30']  # Buys do not have to be in current FY
+        # Need logic to link sells with relevant buy transactions!
+        
+        fy_df = combined_df.reset_index().set_index(['Ticker','Type','Date'])
 
         if to_csv: self.__export_df_to_csv(fy_df,fname)
 
@@ -229,7 +231,7 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         ticker_df = pd.concat([sells,buys])
         ticker_df['Ticker'] = ticker
 
-        return ticker_df.set_index(['Date']).sort_values(['Date','Volume'],ascending=[True,False])
+        return ticker_df.set_index(['Date']).sort_values(['Date','Volume'],ascending=[True,False])  # Date must ascend for volumes to make sense
     
     def __export_df_to_csv(self, df, fname:str):
         fpath = self.output_path / fname
