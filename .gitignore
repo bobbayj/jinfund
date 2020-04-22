@@ -5,7 +5,7 @@
 *.ipynb*
 
 # Dirs
-__pycache__
+*__pycache__
 TaxJinie
 
 # Whitelist
