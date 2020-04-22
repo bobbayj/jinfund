@@ -133,7 +133,7 @@ class SettingsGrid(GridLayout):
                 end_path = shutil.copy(fpath, DATA_PATH)
             if len(self.brokers) > 1:
                 broker_name = self.brokers.pop(0)
-                new_fname = f'{broker_name}.csv'
+                new_fname = f'{broker_name.lower()}.csv'
                 new_fpath = DATA_PATH / new_fname
                 Path(end_path).rename(new_fpath)
                 print(new_fpath)
