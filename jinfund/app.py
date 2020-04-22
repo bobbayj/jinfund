@@ -125,13 +125,19 @@ class SettingsGrid(GridLayout):
         instance.count += 1
         instance.text=f'Files loaded ({instance.count})'
 
-        for f in DATA_PATH.iterdir():  # Clear directory
+        for f in DATA_PATH.iterdir():  # Clear data directory
             if f.stem != 'samples': f.unlink()
 
-        for fpath in self.fpaths:
+        for fpath in self.fpaths:  # Copy data to data directory
             if len(fpath) > 0:
-                shutil.copy(fpath, DATA_PATH)
-    
+                end_path = shutil.copy(fpath, DATA_PATH)
+            if len(self.brokers) > 1:
+                broker_name = self.brokers.pop(0)
+                new_fname = f'{broker_name}.csv'
+                new_fpath = DATA_PATH / new_fname
+                Path(end_path).rename(new_fpath)
+                print(new_fpath)
+            
 class FileGrid(GridLayout):
     def __init__(self, select_type:str, num:int=1, **kwargs):
         super(FileGrid, self).__init__(**kwargs)
