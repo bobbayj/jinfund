@@ -17,17 +17,18 @@ import tkinter as tk
 from tkinter import filedialog
 
 # Local imports
-from .portfolio.transactions import Transactions
+from .portfolio.transactions import DataPath, Transactions
 from .analysis.tax import AutoTax
 
 # Global variables
 DATA_PATH = Path.cwd() / 'jinfund' / 'data'     # Do not change or set to directory with other files,
                                                 # AS THIS WILL DELETE EVERYTHING IN THAT FOLDER
 DATA_PATH.mkdir(parents=True,exist_ok=True)
+DataPath.data_path = DATA_PATH
 
 OUTPUT_PATH = Path.cwd() / 'jinfund' / 'output'
 OUTPUT_PATH.mkdir(parents=True,exist_ok=True)
-AutoTax.output_path = OUTPUT_PATH
+AutoTax.OUTPUT_PATH = OUTPUT_PATH
 
 class MainGrid(GridLayout):
     def __init__(self, **kwargs):
@@ -131,12 +132,14 @@ class SettingsGrid(GridLayout):
         for fpath in self.fpaths:  # Copy data to data directory
             if len(fpath) > 0:
                 end_path = shutil.copy(fpath, DATA_PATH)
+            else:
+                continue
+            
+            broker_name = self.brokers.pop(0)
             if len(self.brokers) > 1:
-                broker_name = self.brokers.pop(0)
                 new_fname = f'{broker_name.lower()}.csv'
                 new_fpath = DATA_PATH / new_fname
                 Path(end_path).rename(new_fpath)
-                print(new_fpath)
             
 class FileGrid(GridLayout):
     def __init__(self, select_type:str, num:int=1, **kwargs):
@@ -166,7 +169,7 @@ class FileGrid(GridLayout):
             self.instruction = 'Broker Trades Filepath: '
         elif select_type == 'dividend':
             self.cols=2
-            self.instruction = 'Dividends Filepath: '
+            self.instruction = 'Dividends Filepath (Required): '
         
         self.label_layout = GridLayout()
         self.label_layout.cols = 1
@@ -200,7 +203,6 @@ class FileGrid(GridLayout):
         if self.select_type == 'output_path':
             self.fpath = filedialog.askdirectory()
             AutoTax.output_path = Path(self.fpath)
-            print(AutoTax.output_path)
         else:
             self.fpath = filedialog.askopenfilename()
         self.fpath_lbl.text = self.fpath

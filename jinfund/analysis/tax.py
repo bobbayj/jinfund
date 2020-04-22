@@ -12,7 +12,7 @@ class AutoTax():
     Functions:
         fy_view(yr_end = None, summary = True) -- Provides a snapshot of capital gains for period. Defaults to current FY
     '''
-    output_path = Path.cwd()/('output')
+    OUTPUT_PATH = Path.cwd()/('output')
 
     def __init__(self, financial_year:int=2020):
         self.cgt_log = CGTLog()
@@ -234,9 +234,9 @@ Total CGTaxable:\t ${fy_df['CapitalGainsTaxable'].sum(): .2f}
         return ticker_df.set_index(['Date']).sort_values(['Date','Volume'],ascending=[True,False])  # Date must ascend for volumes to make sense
     
     def __export_df_to_csv(self, df, fname:str):
-        fpath = self.output_path / fname
+        fpath = self.OUTPUT_PATH / fname
         df.to_csv(fpath)
-        print(f'Saved to csv!\n\tFilename:\t{fname}\n\tOutput path:\t{self.output_path}')
+        print(f'Saved to csv!\n\tFilename:\t{fname}\n\tOutput path:\t{self.OUTPUT_PATH}')
 
 class CGTLog():
     def __init__(self):

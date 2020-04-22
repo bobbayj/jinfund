@@ -4,21 +4,68 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# Define data source path
-dirname = Path(__file__).parents[1] / 'data'
+class DataPath:
+    data_path = Path(__file__).parents[1] / 'data'
+    def __init__(self):
+        print(self.data_path)
 
-class Trades:
+class Transactions(DataPath):
+    '''Combines trades from brokers and manually-inputted dividends into one pd.DataFrame.
+    Currently only supports Commsec trades
+    
+    Returns:
+        pd.DataFrame -- Columns: Ticker | Market | TradePrice | EffectivePrice | Brokerage | Scrip
+    '''
+
+    brokers = ['commsec']
+    
+    def __init__(self, **kwargs):
+        super(Transactions, self).__init__(**kwargs)
+
+        self.t_df = self.__collate_broker_trades()
+        self.d_df = Dividends().all
+
+        self.tx_df = self.__combine_trades_divs()
+
+    def __collate_broker_trades(self):
+        df = pd.DataFrame()
+        for broker in Transactions.brokers:
+            t = Trades(broker)
+            df = df.append(t.all)
+        return df.sort_index()
+
+    def __combine_trades_divs(self):
+        df = self.d_df
+        # Get scrip dividends only
+        temp_df = df[df['scrip_vol'].isna()==False]
+
+        # Match columns
+        temp_df = temp_df.rename(columns={'scrip_vol':'Volume','scrip_price':'TradePrice'})
+        temp_df['Market'] = 'ASX'
+        temp_df['EffectivePrice'] = temp_df['TradePrice']
+        temp_df['Brokerage'] = 0
+        temp_df = temp_df[self.t_df.columns]
+        temp_df['Scrip'] = 1
+
+        return pd.concat([self.t_df,temp_df],axis=0, join='outer').sort_index()  # Combine the dataframes together and return
+
+    @property
+    def cash_dividends(self):
+        return self.d_df[self.d_df['cash']>0]['cash']
+    
+class Trades(DataPath):
     '''
     Reads and prepares Commsec transactions.csv files
 
     Note that transactions only show on the T+2 date
     '''
-    def __init__(self,broker):
-        try:
-            csvfiles = sorted(list(dirname.glob(f'{broker}*')))
-        except:
-            return
-        latest_csv = csvfiles[-1]
+
+    def __init__(self, broker:str, **kwargs):
+        super(Trades, self).__init__(**kwargs)
+        csvfiles = sorted(list(self.data_path.glob(f'{broker}*')))
+        try: latest_csv = csvfiles[-1]
+        except IndexError:
+            raise IndexError(f'No trade files from {broker}')
 
         t_df = pd.read_csv(latest_csv)
 
@@ -130,10 +177,14 @@ class Trades:
     def by_date(self,date):
         return self.t_df.xs(date,level=0,axis=0)
 
-class Dividends:
-    def __init__(self):
-        csvfiles = sorted(list(dirname.glob('divs*')))
-        latest_csv = csvfiles[-1]
+class Dividends(DataPath):
+    def __init__(self, **kwargs):
+        super(Dividends, self).__init__(**kwargs)
+
+        csvfiles = sorted(list(self.data_path.glob('divs*')))
+        try: latest_csv = csvfiles[-1]
+        except IndexError:
+            raise IndexError('No dividend file')
 
         d_df = pd.read_csv(latest_csv)
         d_df['date'] = pd.to_datetime(d_df['date'],dayfirst=True)  # Convert dates to datetime, and set multiindex [date, ticker]
@@ -142,45 +193,3 @@ class Dividends:
     @property
     def all(self):
         return self.d_df
-
-class Transactions:
-    '''Combines trades from brokers and manually-inputted dividends into one pd.DataFrame.
-    Currently only supports Commsec trades
-    
-    Returns:
-        pd.DataFrame -- Columns: Ticker | Market | TradePrice | EffectivePrice | Brokerage | Scrip
-    '''
-
-    brokers = ['commsec']
-
-    def __init__(self):
-        self.t_df = self.__collate_broker_trades()
-        self.d_df = Dividends().all
-
-        self.tx_df = self.__combine_trades_divs()
-
-    def __collate_broker_trades(self):
-        df = pd.DataFrame()
-        for broker in Transactions.brokers:
-            t = Trades(broker)
-            df = df.append(t.all)
-        return df.sort_index()
-
-    def __combine_trades_divs(self):
-        df = self.d_df
-        # Get scrip dividends only
-        temp_df = df[df['scrip_vol'].isna()==False]
-
-        # Match columns
-        temp_df = temp_df.rename(columns={'scrip_vol':'Volume','scrip_price':'TradePrice'})
-        temp_df['Market'] = 'ASX'
-        temp_df['EffectivePrice'] = temp_df['TradePrice']
-        temp_df['Brokerage'] = 0
-        temp_df = temp_df[self.t_df.columns]
-        temp_df['Scrip'] = 1
-
-        return pd.concat([self.t_df,temp_df],axis=0, join='outer').sort_index()  # Combine the dataframes together and return
-
-    @property
-    def cash_dividends(self):
-        return self.d_df[self.d_df['cash']>0]['cash']
