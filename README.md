@@ -1,6 +1,6 @@
-# jin-fund
+# TaxJinie (part of the jinfund :) )
 
-Jin-fund is a basic Python package to help you analyse your equity portfolio and quickly process basic admin tasks.
+TaxJinie is a basic tool to help you analyse your equity portfolio and quickly process basic admin tasks. (Also available as an .exe on Dropbox)[https://www.dropbox.com/sh/s5maw2wh1kczvcr/AACV7-41mPaV-gGfKP6BoaRDa?dl=0]
 
 It is designed to automate as much of the portfolio administration away as possible, allowing you to focus on what you do best - invest!
 **Currently only calculates your tax returns from your trade and dividend history**
@@ -20,10 +20,9 @@ It is designed to automate as much of the portfolio administration away as possi
 
 ### Quick Start using GUI
 
-Note: **Currently under-development**. However, you can play around using Jupyter Notebooks (see [Basic Usage in Jupyter Notebooks](#Basic-Usage-in-Jupyter-Notebooks))
-
-Run `app.exe` to open the GUI.
-
+- Run `TaxJinie.exe` (if you want to test this out) or `cli.py` (if you're familiar how to do so with python)
+  - The `.exe` can be downloaded from (Dropbox)[[https://www.dropbox.com/sh/s5maw2wh1kczvcr/AACV7-41mPaV-gGfKP6BoaRDa?dl=0]]. It has been compiled from this repo only so is safe!
+  - If going the python route, make sure you run `pipenv install` to install the few dependencies needed
 - You will need to import the broker trade data to this tool, and select which broker this is
   - The file will be copied to `jinfund/data` and renamed to `{broker_name}.csv`. E.g. Transactions exported from commsec will be renamed `commsec.csv`
   - If your broker is not in the drop-down list, contact and provide me a sample csv file so I can support the broker
