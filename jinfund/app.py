@@ -56,10 +56,12 @@ class ReportingGrid(GridLayout):
         self.inside.add_widget(self.fy_input)
 
         self.cgt_report_btn = Button(text='Generate CGT Report', halign='center', size_hint_y=None, height=60)  # Generate CGT Report button
+        self.cgt_report_btn.count = 0
         self.cgt_report_btn.bind(on_release=self._get_cgt_report)
         # Label to say exported + time
 
         self.cgt_details_btn = Button(text='Export CGT Details', halign='center', size_hint_y=None, height=60)  # Export CGT Details button
+        self.cgt_details_btn.count = 0
         self.cgt_details_btn.bind(on_release=self._get_cgt_details)
         # Label to say exported + time
 
@@ -73,12 +75,14 @@ class ReportingGrid(GridLayout):
     def _get_cgt_report(self, instance):
         tax = AutoTax(financial_year=self.fy)
         tax.cgt_report()
-        instance.text += '\nCGT Report Generated!'
+        instance.count += 1
+        instance.text = f'Generate CGT Report\nCGT Report Generated! ({instance.count})'
 
     def _get_cgt_details(self, instance):
         tax = AutoTax(financial_year=self.fy)
         tax.cgt_details()
-        instance.text += '\nCGT Details Exported!'
+        instance.count += 1
+        instance.text = f'Export CGT Details\nCGT Details Exported!  ({instance.count})'
     
     def _update_fy(self, instance):
         try: fy = int(instance.text)

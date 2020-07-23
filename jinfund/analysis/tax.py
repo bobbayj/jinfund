@@ -14,7 +14,8 @@ class AutoTax():
     '''
     OUTPUT_PATH = Path.cwd()/('output')
 
-    def __init__(self, financial_year:int=2020):
+    def __init__(self, financial_year:int=0):
+
         self.cgt_log = CGTLog()
         self.tx_df = Transactions().tx_df
         self.tickers = list(sorted(set(self.tx_df.reset_index().Ticker.to_list())))
@@ -24,14 +25,15 @@ class AutoTax():
 
     @property
     def finyear(self):
-        today = datetime.today()
-        self.__finyear = today.year
-        if today.month > 6:
-            self.__finyear += 1
         return self.__finyear
     
     @finyear.setter
     def finyear(self, value:int):
+        today = datetime.today()
+        if self.__finyear == 0:
+            self.__finyear = today.year
+            if today.month > 6:
+                self.__finyear += 1
         if value < 2015: raise ValueError('Year out of bonds. Must be 2015 or after.')
         self.__finyear = value
     
