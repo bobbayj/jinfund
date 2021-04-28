@@ -8,7 +8,7 @@ from pathlib import Path
 import yfinance as yf
 
 # Local imports
-from portfolio.commsec import Trades
+from portfolio.transactions import Trades
 import datehandler
 
 

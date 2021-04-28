@@ -2,7 +2,7 @@
 import pandas as pd
 
 # Local Imports
-from portfolio.commsec import Trades
+from portfolio.transactions import Trades
 
 
 class Cashflow(object):

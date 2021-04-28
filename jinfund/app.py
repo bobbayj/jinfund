@@ -13,13 +13,13 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle
 
+
 import tkinter as tk
 from tkinter import filedialog
 
 # Local imports
-from .portfolio.transactions import DataPath, Transactions
-from .analysis.tax import AutoTax
-
+from portfolio.transactions import DataPath, Transactions
+from analysis.tax import AutoTax
 # Global variables
 DATA_PATH = Path.cwd() / 'jinfund' / 'data'     # Do not change or set to directory with other files,
                                                 # AS THIS WILL DELETE EVERYTHING IN THAT FOLDER
@@ -32,11 +32,13 @@ AutoTax.OUTPUT_PATH = OUTPUT_PATH
 
 class MainGrid(GridLayout):
     def __init__(self, **kwargs):
+        print("Test")
         super(MainGrid, self).__init__(**kwargs)
         self.cols = 1
 
         self.add_widget(SettingsGrid())
         self.add_widget(ReportingGrid())
+        print("Test 1")
 
 class ReportingGrid(GridLayout):
     def __init__(self, **kwargs):

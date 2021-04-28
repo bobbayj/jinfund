@@ -82,10 +82,3 @@ class Options:
         val = s0*n1 - strike*np.exp(-rf*years)*n2
 
         return val
-
-
-
-
-
-        
-

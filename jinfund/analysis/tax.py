@@ -3,8 +3,10 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
+Path.cwd()
+
 # Local imports
-from ..portfolio.transactions import Transactions
+from portfolio.transactions import Transactions
 
 class AutoTax():
     '''Automatically calculates capital gains tax over a specified period for one or all stocks using trade and scrip dividend data.
@@ -246,7 +248,6 @@ class CGTLog():
 
     def record(self, cgt_logdict):
         return self.log.append(cgt_logdict)
-
 
     @property
     def view(self):
