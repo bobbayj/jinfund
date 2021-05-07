@@ -1,22 +1,48 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
 # Local imports
 from . import portfolio
 
 class Tax():
-    def __init__(self) -> None:
+    def __init__(self, financial_year:int=2021) -> None:
         self.portfolio = portfolio.build()
         self.cgt_log = []
         self.all_cg_events = pd.DataFrame()
+
+        self.__fy_end = financial_year
+        self.__fy_start = self.fy_end - 1
+
+    @property
+    def fy_end(self):
+        return self.__fy_end
+    
+    @fy_end.setter
+    def fy_end(self, value:int):
+        today = datetime.today()
+        if self.__fy_end == 0:
+            self.__fy_end = today.year
+            if today.month > 6:
+                self.__fy_end += 1
+        if value < 2015: raise ValueError('Year out of bonds. Must be 2015 or after.')
+        self.__fy_end = value
+    
+    @property
+    def fy_start(self):
+        self.__fy_start = self.fy_end - 1
+        return self.__fy_start
     
     def capital_gain_events(self):
-
+        '''Loops through and calculates capital gains for each ticker
+        '''
         for ticker in self.portfolio['Ticker'].unique():
             ticker_capital_gain_events = self.ticker_cg(ticker)
             if len(ticker_capital_gain_events) > 0:
                 self.all_cg_events = pd.concat([self.all_cg_events,ticker_capital_gain_events])
+        
+        self.all_cg_events = self.all_cg_events.set_index('Date').sort_index()
 
     def ticker_cg(self, ticker):
         '''Calculates capital gains using Last in, first out logic
@@ -39,8 +65,6 @@ class Tax():
             }
             tx_vol = tx_dict['Volume']  # Simpler to read
             tx_cg, tx_cg_taxable = 0, 0  # Reset to 0 for each new tx
-
-            print(tx_dict)
 
             if tx_vol > 0:  # Buys in queue
                 buy_queue.append(tx_dict)
@@ -65,21 +89,21 @@ class Tax():
                     buy_logs.append(buy_log)                        # Keep log of buys associated with sale
 
                 cgt_detailed_log = { # Log event for reporting
-                    'ticker': ticker,
-                    'date': date,
-                    'volume': txs['Volume'][i],
-                    'cg': tx_cg,
-                    'cgt': tx_cg_taxable,
-                    'buy_parcels': buy_logs,
-                    'sell_parcel': tx_dict,
+                    'Ticker': ticker,
+                    'Date': date,
+                    'Volume': txs['Volume'][i],
+                    'Capital Gains': tx_cg,
+                    'Capital Gains Taxable': tx_cg_taxable,
+                    'Buy Parcels': buy_logs,
+                    'Sell Parcel': tx_dict,
                 }
                 self.cgt_log.append(cgt_detailed_log)
 
                 cgt_event = {  # Dict to store capital gain event
                     'Ticker': ticker,
                     'Date': date,
-                    'CapitalGains': tx_cg,
-                    'CapitalGainsTaxable': tx_cg_taxable,
+                    'Capital Gains': tx_cg,
+                    'Capital Gains Taxable': tx_cg_taxable,
                     }
                 cgt_events.append(cgt_event)
         return pd.DataFrame(cgt_events)
@@ -94,9 +118,8 @@ class Tax():
         Returns:
             float -- calculated capital gains
         '''
-        limiter_options = ['buy','sell']
-        if limiter not in limiter_options:
-            raise ValueError(f'Invalid partial type. Expected one of: {limiter_options}')
+        if limiter not in ['buy','sell']:
+            raise ValueError(f'Invalid partial type. Expected one of: ["buy","sell"]')
         if limiter == 'buy':  # More buy volume than sell volume
             volume = buy_parcel['Volume']
         else:  # More sell volume than buy volume
@@ -112,3 +135,54 @@ class Tax():
             cg_taxable = cg
         
         return cg, cg_taxable
+
+    def fy_view(self, summary = True):
+        '''Returns view of capital gains for the given financial year.
+        
+        Keyword Arguments:
+            summary {bool} -- Summarises capital gains per ticker. Set to False for date details (default: {True})
+        
+        Returns:
+            DataFrame -- View of capital gains
+        '''
+        fy_df = self.all_cg_events.loc[f'{self.fy_start}-07-01':f'{self.fy_end}-06-30']
+
+        if summary:
+            fy_df = fy_df.groupby('Ticker').sum()
+        
+        print(f'''
+Capital gains for \tFY{self.fy_start}-{self.fy_end}
+Total CG:\t\t ${fy_df['Capital Gains'].sum(): .2f}
+Total CGTaxable:\t ${fy_df['Capital Gains Taxable'].sum(): .2f}
+(Uses LIFO method)
+        ''')
+        return fy_df
+
+    def cgt_report(self, output_type='csv'):
+        '''Creates a .csv report of all capital gains events for the given year and the parcels involved
+
+        Args:
+            output_type (str, optional): Select output type, `excel` or `csv`. Defaults to 'csv'.
+
+        Returns:
+            pandas.DataFrame: CGT log for the selected financial year
+        '''
+        df = pd.DataFrame(self.cgt_log).set_index('Date').sort_index()  # Dependent on how the data is logged in AutoTax!
+        df['Buys Associated'] = df.apply(lambda x: len(x['Buy Parcels']), axis=1)
+        fy_df = df.loc[f'{self.fy_start}-07-01':f'{self.fy_end}-06-30']
+        
+        fname = f'FY{self.fy_end}_cgt_report.csv'
+        if output_type == 'excel': self.__export_df_to_csv(fy_df,fname, excel = True)
+        else: self.__export_df_to_csv(fy_df,fname, excel = False)
+
+        return fy_df
+
+    def __export_df_to_csv(self, df, fname:str, excel=False):
+        fpath = Path(__file__).parent.parent / 'reports' / fname
+        if excel:
+            fpath = fpath.with_suffix('.xlsx')
+            df.to_excel(fpath.with_suffix('.xlsx'))
+        else:
+            df.to_csv(fpath.with_suffix('.csv'))
+
+        print(f'Saved!\n\tFilename:\t{fpath.name}\n\tOutput path:\t{fpath}')
