@@ -24,6 +24,7 @@ It is designed to automate as much of the portfolio administration away as possi
 Feel free to experiment in a Jupyter Notebook. Detailed docs to come - feel free to ask.
 *Run `pipenv install` in the terminal to install dependencies first.*
 
+1. Your `.csv` files need to be located in the transactions folder.
 
 ### Limitations
 
