@@ -7,6 +7,7 @@ name = "pypi"
 pandas = "*"
 ipython = "*"
 ipykernel = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
