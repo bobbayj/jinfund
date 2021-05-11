@@ -8,7 +8,7 @@ from . import portfolio
 
 class Tax():
     def __init__(self, financial_year:int=2021) -> None:
-        self.portfolio = portfolio.build()
+        self.transactions = portfolio.transactions()
         self.cgt_log = []
         self.all_cg_events = pd.DataFrame()
 
@@ -37,7 +37,7 @@ class Tax():
     def capital_gain_events(self):
         '''Loops through and calculates capital gains for each ticker
         '''
-        for ticker in self.portfolio['Ticker'].unique():
+        for ticker in self.transactions['Ticker'].unique():
             ticker_capital_gain_events = self.ticker_cg(ticker)
             if len(ticker_capital_gain_events) > 0:
                 self.all_cg_events = pd.concat([self.all_cg_events,ticker_capital_gain_events])
@@ -47,7 +47,7 @@ class Tax():
     def ticker_cg(self, ticker):
         '''Calculates capital gains using Last in, first out logic
         '''
-        tx_df = self.portfolio[self.portfolio['Ticker'] == ticker]
+        tx_df = self.transactions[self.transactions['Ticker'] == ticker]
         dates = list(tx_df.index)
 
         txs = tx_df.to_dict('list')     # For easier sequential access to each row
@@ -186,3 +186,8 @@ Total CGTaxable:\t ${fy_df['Capital Gains Taxable'].sum(): .2f}
             df.to_csv(fpath.with_suffix('.csv'))
 
         print(f'Saved!\n\tFilename:\t{fpath.name}\n\tOutput path:\t{fpath}')
+
+    def export_portfolio(self):
+        fname = f'portfolio_{datetime.today().date()}'
+
+        self.__export_df_to_csv(portfolio.current(), fname, excel=True)
