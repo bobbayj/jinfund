@@ -34,3 +34,5 @@ def current():
     portfolio_df = pd.DataFrame.from_dict(portfolio_dict, orient='index')
     current_portfolio = portfolio_df[portfolio_df['Volume'] > 0]
     return current_portfolio.sort_index()
+
+

@@ -15,7 +15,7 @@ class Loader():
 
         # Internal props
         self.raw_files = {}
-        self.pkl = ''
+        self.pkl_path = ''
         self.broker_dfs = {}
     
     def build(self):
@@ -34,8 +34,8 @@ class Loader():
         # Store output for other modules --> pickle is fine as raw is in .csv and will be used in Python only
         # For future reference: https://towardsdatascience.com/stop-persisting-pandas-data-frames-in-csvs-f369a6440af5
         fpath = DATA_DIR / 'portfolio'
-        self.pkl = fpath.with_suffix('.pkl')
-        master_tx_df.to_pickle(f"{self.pkl}")
+        self.pkl_path = fpath.with_suffix('.pkl')
+        master_tx_df.to_pickle(f"{self.pkl_path}")
     
     def commsec(self):
         # need a builder factory

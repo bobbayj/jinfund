@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import textwrap
 
 # Local imports
 from . import portfolio
@@ -38,13 +39,13 @@ class Tax():
         '''Loops through and calculates capital gains for each ticker
         '''
         for ticker in self.transactions['Ticker'].unique():
-            ticker_capital_gain_events = self.ticker_cg(ticker)
+            ticker_capital_gain_events = self.__ticker_cg(ticker)
             if len(ticker_capital_gain_events) > 0:
                 self.all_cg_events = pd.concat([self.all_cg_events,ticker_capital_gain_events])
         
         self.all_cg_events = self.all_cg_events.set_index('Date').sort_index()
 
-    def ticker_cg(self, ticker):
+    def __ticker_cg(self, ticker):
         '''Calculates capital gains using Last in, first out logic
         '''
         tx_df = self.transactions[self.transactions['Ticker'] == ticker]
@@ -150,12 +151,14 @@ class Tax():
         if summary:
             fy_df = fy_df.groupby('Ticker').sum()
         
-        print(f'''
-Capital gains for \tFY{self.fy_start}-{self.fy_end}
-Total CG:\t\t ${fy_df['Capital Gains'].sum(): .2f}
-Total CGTaxable:\t ${fy_df['Capital Gains Taxable'].sum(): .2f}
-(Uses LIFO method)
+        log_message = textwrap.dedent(f'''\
+          Capital gains for \tFY{self.fy_start}-{self.fy_end}
+          Total CG:\t\t ${fy_df['Capital Gains'].sum(): .2f}
+          Total CGTaxable:\t ${fy_df['Capital Gains Taxable'].sum(): .2f}
+          (Uses LIFO method)
         ''')
+        print(log_message)
+
         return fy_df
 
     def cgt_report(self, output_type='csv'):
