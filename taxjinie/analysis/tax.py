@@ -72,6 +72,11 @@ class Tax():
             else:  # Sells reduced by
                 buy_logs = []                                       # Flush buy logs
                 while tx_vol != 0:                                  # Loop until all the sold volume is accounted for
+                    try:
+                        type(buy_queue[-1])                         # Check for any missing buy transactions
+                    except IndexError as err:
+                        raise(f'{err}: There is a missing buy transaction for {ticker}, with volume: {abs(tx_vol)}')
+
                     if buy_queue[-1]['Volume'] == 0:                # Catch any 0 volume buy parcels
                         buy_parcel = buy_queue.pop()
                         continue
@@ -85,6 +90,7 @@ class Tax():
                         cg, cg_taxable = self.__cg_calc(buy_parcel, tx_dict, limiter='buy')
                         buy_log = buy_parcel.copy()                 # For logging - remaining shares in buy_parcel
                         tx_vol += buy_parcel['Volume']              # Increase sale_volume by LIFO buy_volume (sale_volume is negative)
+                    
                     tx_cg += cg
                     tx_cg_taxable += cg_taxable
                     buy_logs.append(buy_log)                        # Keep log of buys associated with sale

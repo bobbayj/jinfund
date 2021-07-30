@@ -78,6 +78,7 @@ class Loader():
         ## READ CSV FILE --> convert to function later
         # This could also be generalised to any broker in future
         csvfiles = sorted(list(DATA_DIR.glob(f'{broker}*{filetype}')))
+
         try: latest_csv = csvfiles[-1]
         except IndexError:
             raise IndexError(f'No tx files from {broker}')
