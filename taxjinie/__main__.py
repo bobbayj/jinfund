@@ -7,6 +7,7 @@ def main():
 
     reporting = tax.Tax(2021)
     reporting.capital_gain_events()
+    reporting.upcoming_cgtdiscounts()
     reporting.cgt_report(output_type='excel')
     reporting.export_portfolio()
 

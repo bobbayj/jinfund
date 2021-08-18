@@ -71,6 +71,7 @@ class Tax():
                 buy_queue.append(tx_dict)
             else:  # Sells reduced by
                 buy_logs = []                                       # Flush buy logs
+                
                 while tx_vol != 0:                                  # Loop until all the sold volume is accounted for
                     try:
                         type(buy_queue[-1])                         # Check for any missing buy transactions
@@ -113,6 +114,7 @@ class Tax():
                     'Capital Gains Taxable': tx_cg_taxable,
                     }
                 cgt_events.append(cgt_event)
+
         return pd.DataFrame(cgt_events)
     
     def __cg_calc(self, buy_parcel, sell_parcel, limiter='buy'):  # Aux function
@@ -186,6 +188,56 @@ class Tax():
 
         return fy_df
 
+    def upcoming_cgtdiscounts(self):
+      today = datetime.today()
+      pastyear_df = self.transactions.loc[today - pd.DateOffset(years=1) : today]
+      buy_parcels_list = []
+
+      for ticker in pastyear_df['Ticker'].unique():
+
+        ticker_df = pastyear_df[ pastyear_df['Ticker'] == ticker]
+        tx_list = ticker_df.reset_index().to_dict("records")
+        buy_parcels_ticker = []
+
+        for tx in tx_list:
+          if tx['Type'] == 'B':
+            buy_parcels_ticker.append(tx)
+
+          else:
+            try:
+              buy_parcels_ticker[-1]['Volume'] -= - tx['Volume']
+
+            except IndexError:
+              print(f'>> No buys for sale of {ticker} in past year <<')
+              continue
+        
+          # Only include buy parcels that have not been closed
+          if buy_parcels_ticker:
+            while buy_parcels_ticker[-1]['Volume'] <= 0:
+              try:
+                buy_parcels_ticker[-2]['Volume'] -= buy_parcels_ticker[-1]['Volume']
+                print(buy_parcels_ticker)
+                buy_parcels_ticker.pop()
+              
+              except IndexError:
+                print(f'>> {ticker} has been sold for this parcel <<')
+                buy_parcels_ticker.pop()
+                break
+              
+          
+        buy_parcels_list.append(buy_parcels_ticker)
+
+      buy_parcels_list = self.flatten(buy_parcels_list)
+
+      cgt_upcoming_df = pd.DataFrame(buy_parcels_list).set_index('Date')
+      cgt_upcoming_df['CGT Discount Date'] = cgt_upcoming_df.index + pd.DateOffset(years = 1)
+
+      self.__export_df_to_csv(
+        cgt_upcoming_df
+        , fname=f'upcoming_cgt_discounts_{today:%Y%m%d}'
+        , excel=True
+        )
+
     def __export_df_to_csv(self, df, fname:str, excel=False):
         fpath = Path(__file__).parent.parent / 'reports' / fname
         if excel:
@@ -200,3 +252,6 @@ class Tax():
         fname = f'portfolio_{datetime.today().date()}'
 
         self.__export_df_to_csv(portfolio.current(), fname, excel=True)
+
+    def flatten(self, t):
+      return [item for sublist in t for item in sublist]

@@ -22,9 +22,10 @@ It is designed to automate as much of the portfolio administration away as possi
 ### Basic Usage
 
 Feel free to experiment in a Jupyter Notebook. Detailed docs to come - feel free to ask.
-*Run `pipenv install` in the terminal to install dependencies first.*
 
-1. Your `.csv` files need to be located in the transactions folder.
+0. *Run `pipenv install` in the terminal to install dependencies*
+1. Copy the broker transaction `.csv` files into the `transactions` folder
+2. Run `__main__.py` with `python __main__.py` in console
 
 ### Limitations
 
