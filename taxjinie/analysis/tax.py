@@ -1,6 +1,5 @@
 from pathlib import Path
 import pandas as pd
-import numpy as np
 from datetime import datetime
 import textwrap
 
@@ -248,8 +247,8 @@ class Tax():
 
         print(f'Saved!\n\tFilename:\t{fpath.name}\n\tOutput path:\t{fpath}')
 
-    def export_portfolio(self):
-        fname = f'portfolio_{datetime.today().date()}'
+    def export_tx_history(self):
+        fname = f'transaction_history_{datetime.today():%Y%m%d}'
 
         self.__export_df_to_csv(portfolio.current(), fname, excel=True)
 

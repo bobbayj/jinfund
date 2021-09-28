@@ -1,7 +1,6 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from datetime import datetime
 
 DATA_DIR = Path(__file__).parent.parent / 'transactions'
 
@@ -12,7 +11,7 @@ def transactions():
 
     return pd.concat(frames)
 
-def current():
+def history(current=False):
     txs_df = transactions()
     txs_df['Value'] = txs_df['Volume'] * txs_df['PriceIncBrokerage']
     portfolio_dict = dict.fromkeys(txs_df['Ticker'].unique())
@@ -32,7 +31,10 @@ def current():
         }
 
     portfolio_df = pd.DataFrame.from_dict(portfolio_dict, orient='index')
-    current_portfolio = portfolio_df[portfolio_df['Volume'] > 0]
-    return current_portfolio.sort_index()
+    
+    if current:
+      portfolio_df = portfolio_df[portfolio_df['Volume'] > 0]
+      
+    return portfolio_df.sort_index()
 
 
