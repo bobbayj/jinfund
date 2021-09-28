@@ -56,12 +56,6 @@ class Loader():
         # Clean dataframe --> Update data types, calculate final columns, drop useless columns, set index as date
         tx_df['txValue'] = tx_df.fillna(0)['Debit($)'] + tx_df.fillna(0)['Credit($)']
         tx_df['PriceIncBrokerage'] = np.abs( tx_df['txValue'] / tx_df['Volume'] )
-        tx_df['Brokerage'] = np.round(
-            np.abs(
-                tx_df['Volume'] * (tx_df['Price'] - tx_df['PriceIncBrokerage'])
-                ),
-            decimals = 2
-            )
         tx_df['Volume'] = np.where(
             tx_df['Type'] == 'B'
             , tx_df['Volume']
