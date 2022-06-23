@@ -21,11 +21,11 @@ It is designed to automate as much of the portfolio administration away as possi
 
 ### Basic Usage
 
-Feel free to experiment in a Jupyter Notebook. Detailed docs to come - feel free to ask.
+Feel free to experiment in a Jupyter Notebook. Reach out if you run into any issues.
 
 0. *Run `pipenv install` in the terminal to install dependencies*
 1. Copy the broker transaction `.csv` files into the `transactions` folder
-2. Run `__main__.py` with `python __main__.py` in console
+2. Run the taxjinie package with `python taxjinie` in terminal
 
 ### Limitations
 
