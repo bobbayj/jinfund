@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import textwrap
 
@@ -61,8 +62,8 @@ class Tax():
                 'Volume': txs['Volume'][i],
                 'Price': txs['Price'][i],
                 'PriceIncBrokerage': txs['PriceIncBrokerage'][i],
-                'Brokerage': txs['Brokerage'][i],
             }
+            tx_dict['Brokerage'] = np.abs(tx_dict['Volume'] * (tx_dict['PriceIncBrokerage'] - tx_dict['Price']))
             tx_vol = tx_dict['Volume']  # Simpler to read
             tx_cg, tx_cg_taxable = 0, 0  # Reset to 0 for each new tx
 
@@ -250,7 +251,7 @@ class Tax():
     def export_tx_history(self):
         fname = f'transaction_history_{datetime.today():%Y%m%d}'
 
-        self.__export_df_to_csv(portfolio.current(), fname, excel=True)
+        self.__export_df_to_csv(self.transactions, fname, excel=True)
 
     def flatten(self, t):
       return [item for sublist in t for item in sublist]

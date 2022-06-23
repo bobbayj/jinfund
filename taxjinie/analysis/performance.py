@@ -31,10 +31,10 @@ class Performance():
 
     if ticker == 'portfolio':
       for looped_ticker in self.txs['Ticker'].unique():
-        ticker_df = ticker_df.append(self._ticker_monthly_cashflows(looped_ticker))
+        ticker_df = pd.concat([ticker_df, self._ticker_monthly_cashflows(looped_ticker)])
 
     else:
-      ticker_df = ticker_df.append(self._ticker_monthly_cashflows(ticker))
+      ticker_df = pd.concat([ticker_df, self._ticker_monthly_cashflows(ticker)])
 
     if export:
       last_month = ticker_df.last_valid_index()
