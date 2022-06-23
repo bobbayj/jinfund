@@ -9,6 +9,8 @@ ipython = "*"
 ipykernel = "*"
 python-dotenv = "*"
 openpyxl = "*"
+pywin32 = "*"
+setuptools = "*"
 
 [dev-packages]
 
